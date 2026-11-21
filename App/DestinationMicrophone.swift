@@ -33,7 +33,16 @@ import Speech
                 guard format.sampleRate > 0, format.channelCount > 0 else { throw SpatialError.invalid }
                 let req = SFSpeechAudioBufferRecognitionRequest(); req.shouldReportPartialResults = true
                 req.requiresOnDeviceRecognition = true; req.taskHint = .search; self.request = req
-                try input.installAudioTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in req.append(AVAudioPCMBuffer(copying:buffer)) }; self.tapped = true
+                if #available(iOS 27.0, *) {
+                    try input.installAudioTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+                        req.append(AVAudioPCMBuffer(copying: buffer))
+                    }
+                } else {
+                    input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+                        req.append(buffer)
+                    }
+                }
+                self.tapped = true
                 self.engine.prepare(); try self.engine.start()
                 self.task = recognizer.recognitionTask(with: req) { result, error in
                     let text = result?.bestTranscription.formattedString, final = result?.isFinal == true

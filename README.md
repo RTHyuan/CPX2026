@@ -6,7 +6,7 @@
 
 ## 在 iPhone 上运行
 
-用 Xcode 打开 `PathSense.xcodeproj`，选择 `PathSense` scheme 和自己的 iPhone，在 Signing & Capabilities 选开发团队。项目的最低部署版本为 iOS 27.0。本项目使用 Xcode 27.2。首次使用相机、麦克风和中文听写时按提示授权。点「说出目的地」启动 Apple 本机中文识别。权限或语言资源不可用时可改用文字。模拟器的自动化测试通过测试包提供的像素运行相同的识别流程。[Apple 设备与签名说明](https://developer.apple.com/documentation/xcode/running-your-app-on-simulated-or-physical-devices)
+用 Xcode 打开 `PathSense.xcodeproj`，选择 `PathSense` scheme 和自己的 iPhone，在 Signing & Capabilities 选开发团队。最低支持 iOS 26.0。中文听写在 iOS 26 使用 `installTap`，在 iOS 27 及以上使用 `installAudioTap`。本项目使用 Xcode 27.2。首次使用相机、麦克风和中文听写时按提示授权。点「说出目的地」启动 Apple 本机中文识别。权限或语言资源不可用时可改用文字。模拟器的自动化测试通过测试包提供的像素运行相同的识别流程。[Apple 设备与签名说明](https://developer.apple.com/documentation/xcode/running-your-app-on-simulated-or-physical-devices)
 
 ## 现场流程
 
