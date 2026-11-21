@@ -19,7 +19,7 @@ The traveler enters a destination in their own words. The phone surveys the view
 
 ### How we built it
 
-SwiftUI and AVFoundation provide the interface and camera. Apple Vision returns text, bounding boxes and scene observations. A second image scale helps confirm low-confidence spellings. Geometric checks recover certain printed arrow shapes and doorway outlines. The route follows a destination-independent sequence of observations and remembers floor and zone evidence. Successive camera frames must agree on the floor, direction and sign context before the cue changes. A small Core ML classifier contributes evidence about lists. OCR and the journey run on the device.
+SwiftUI provides the interface. ARKit supplies camera images and poses. Apple Vision returns text, bounding boxes and scene observations. A second image scale helps confirm low-confidence spellings. Geometric checks recover certain printed arrow shapes and doorway outlines. The route follows a destination-independent sequence of observations and remembers floor and zone evidence. Successive camera frames must agree on the floor, direction and sign context before the cue changes. Layout rules distinguish lists from individual signs. OCR and near-field checks run on the device. With consent, selected frames and pose summaries can go through the paired Mac to the cloud planner.
 
 ### What we tested and learned
 
@@ -27,7 +27,7 @@ Three continuous pixel-buffer sequences covered a campus room, a hospital depart
 
 ### Tools and attribution
 
-Codex assisted with implementation, tests and documentation. We used Xcode, SwiftUI, AVFoundation, Vision, Core ML, Create ML, UIKit and XCTest. We generated the practice sign images and app icon using Pillow and constructed the layout training examples. We used an actual screenshot from the app’s simulator run and laid out the exhibit poster in ReportLab. The door photograph is by Samuel Zeller under CC0. The project source code is licensed under Apache 2.0.
+Codex assisted with implementation, tests and documentation. This build uses Xcode, SwiftUI, ARKit, AVFoundation, Vision, Speech, UIKit and XCTest. We generated the practice sign images and app icon using Pillow and constructed the layout training examples. We used an actual screenshot from the app’s simulator run and laid out the exhibit poster in ReportLab. The door photograph is by Samuel Zeller under CC0. The project source code is licensed under Apache 2.0.
 
 **海报素材披露**　本次展桌版使用项目自己的应用截图和排版。需要填写生成证明时，按实际素材和主办方答复办理。
 

@@ -183,6 +183,12 @@ final class PathSenseUITests: XCTestCase {
         let stops=try XCTUnwrap(metrics["stops"] as? [[String:Double]])
         XCTAssertTrue(stops.contains { $0["speechStarted"] != nil && $0["requestedAt"] != nil })
         app.buttons["pause"].tap();XCTAssertTrue(face.waitForExistence(timeout:12))
+        app.buttons["pause"].tap(); waitForMessage("已暂停")
+        let resumed = try attachMetrics(button: "pause", name: "air-simulator-resumed")
+        XCTAssertEqual(resumed["started"] as? Double, metrics["started"] as? Double)
+        XCTAssertEqual(resumed["segments"] as? Int, 2)
+        XCTAssertGreaterThan(try XCTUnwrap(resumed["activeSeconds"] as? Double), try XCTUnwrap(metrics["activeSeconds"] as? Double))
+        XCTAssertEqual((resumed["stops"] as? [[String:Double]])?.first, stops.first)
     }
     private func attachMetrics(button:String,name:String) throws -> [String:Any] {
         let json=try XCTUnwrap(app.buttons[button].value as? String), data=Data(json.utf8)

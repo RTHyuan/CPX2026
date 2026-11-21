@@ -35,7 +35,6 @@
 		BA4DAF05CB73105357978A08 /* App/Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9720F86F5984AACA8FCA9A6C /* App/Views.swift */; };
 		C360E9EF0CDACF4BA778C0F1 /* App/Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD11368283FACE95D389948 /* App/Camera.swift */; };
 		CBD2EBE3987921336577A298 /* App/SignVision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109AFC6EBBB7C092041BA9B3 /* App/SignVision.swift */; };
-		D464D60ACDB6E9BA948ADC06 /* App/Resources/SignContext.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 56CE2F1DE8E6AD6CE5936396 /* App/Resources/SignContext.mlmodel */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -270,7 +269,6 @@
 				CBD2EBE3987921336577A298 /* App/SignVision.swift in Sources */,
 				F2C21F731E28472D9153F59A /* App/Design.swift in Sources */,
 				BA4DAF05CB73105357978A08 /* App/Views.swift in Sources */,
-				D464D60ACDB6E9BA948ADC06 /* App/Resources/SignContext.mlmodel in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

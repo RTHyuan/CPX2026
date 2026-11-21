@@ -1,6 +1,7 @@
 """Package a clean public-source snapshot, including the self-contained exhibit."""
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
+import argparse
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -9,15 +10,16 @@ PUBLIC_FILES = (
     '.gitignore', 'LICENSE', 'Package.swift', 'README.md',
     'PathSense.xcodeproj/project.pbxproj',
     'PathSense.xcodeproj/xcshareddata/xcschemes/PathSense.xcscheme',
-    'App/*.swift', 'App/Resources/Assets.xcassets/**/Contents.json',
+    'App/*.swift', 'App/Navigation-Info.plist', 'App/Resources/Assets.xcassets/**/Contents.json',
     'App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png',
     'App/Resources/Practice/*.png', 'App/Resources/Practice/route-door.jpg', 'ASSET-CREDITS.md', 'App/Resources/SignContext.mlmodel',
-    'Core/*.swift', 'Training/sign-layout.csv', 'Tests/PathSenseCoreTests/*.swift',
+    'Core/*.swift', 'Training/sign-layout.csv', 'Training/ArchivedSignContext.swift', 'Tests/PathSenseCoreTests/*.swift', 'Tests/Fixtures/demo-floor.json',
+    'Proxy/server.py', 'Proxy/test_relay.py', 'Scripts/start-navigation-proxy.sh', 'Scripts/check-app-bundle.py',
     'UITests/*.swift', 'Scripts/*.swift', 'Scripts/verify-vision.sh',
     'Scripts/compose-poster.py', 'Scripts/exhibit_poster.py', 'Scripts/make-field-signs.py',
     'Scripts/make-practice.py', 'Scripts/make-route-signs.py', 'Scripts/package-source.py',
     'Scripts/publish-exhibit.py', 'Scripts/record-exhibit.py',
-    'docs/index.html', 'docs/wayfinding.md',
+    'docs/index.html', 'docs/wayfinding.md', 'docs/air-field.md',
     'docs/media/01-home.jpg', 'docs/media/home-dark.jpg', 'docs/media/navigation-dark.jpg',
     'docs/media/route-01-door.jpg', 'docs/media/route-origin.jpg', 'docs/media/route-02-directory.jpg',
     'docs/media/route-floor.jpg', 'docs/media/route-verify.jpg', 'docs/media/route-03-arrived.jpg',
@@ -27,8 +29,10 @@ PUBLIC_FILES = (
 
 
 def main():
-    output = ROOT / 'output' / 'PathSense-public-source.zip'
-    output.parent.mkdir(exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT / 'output' / 'PathSense-public-source.zip')
+    output = parser.parse_args().output
+    output.parent.mkdir(parents=True, exist_ok=True)
     files = set()
     for pattern in PUBLIC_FILES:
         matches = list(ROOT.glob(pattern))

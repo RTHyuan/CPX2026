@@ -1,31 +1,11 @@
 import Foundation
 import Vision
-import CoreML
 import ImageIO
 import CoreVideo
 import CoreImage
 
-/// Requests are per-frame. The shared model is protected across prediction calls.
+/// Only Apple Vision observations and deterministic sign rules participate in navigation.
 final class SignVision: @unchecked Sendable {
-    private let predictionLock = NSLock()
-    private let context: MLModel?
-    var hasContextModel: Bool { context != nil }
-
-    init(modelURL: URL? = Bundle.main.url(forResource: "SignContext", withExtension: "mlmodelc")) {
-        let configuration = MLModelConfiguration()
-        configuration.computeUnits = .cpuOnly
-        context = modelURL.flatMap { try? MLModel(contentsOf: $0, configuration: configuration) }
-    }
-
-    func directoryLikelihood(_ features: LayoutFeatures) -> Double? {
-        guard let context else { return nil }
-        predictionLock.lock()
-        defer { predictionLock.unlock() }
-        let values = features.values.mapValues { MLFeatureValue(int64: Int64($0)) }
-        guard let input = try? MLDictionaryFeatureProvider(dictionary: values), let output = try? context.prediction(from: input), let name = context.modelDescription.predictedProbabilitiesName else { return nil }
-        return output.featureValue(for: name)?.dictionaryValue["list"]?.doubleValue
-    }
-
     func frame(_ image: CVPixelBuffer, orientation: CGImagePropertyOrientation, target: Destination) throws -> FrameResult {
         let handler = VNImageRequestHandler(cvPixelBuffer: image, orientation: orientation)
         return try wayfinding(handler, target: target, image: CIImage(cvPixelBuffer: image).oriented(orientation))
@@ -117,7 +97,7 @@ final class SignVision: @unchecked Sendable {
     }
 
     func classify(_ lines: [SignLine], target: Destination) -> FrameResult {
-        FrameResult(lines: lines, reading: SignParser.analyze(lines, for: target) { (self.directoryLikelihood($0) ?? 0) >= 0.85 })
+        FrameResult(lines: lines, reading: SignParser.analyze(lines, for: target))
     }
     func strings(_ handler: VNImageRequestHandler, languages: [String], correcting: Bool = false, region: CGRect? = nil) throws -> [SignLine] {
         let request = VNRecognizeTextRequest()

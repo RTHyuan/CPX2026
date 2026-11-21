@@ -6,6 +6,7 @@ import SwiftUI
 /// Explicit Xcode device-check launch only; the file contains counters, never camera pixels or speech input.
 @MainActor final class DeviceDiagnostics {
     private struct Report: Encodable {
+        let runID = UUID(), startedAt = Date()
         var worldTracking = ARWorldTrackingConfiguration.isSupported
         var sceneDepth = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
         var cameraPermission = AVCaptureDevice.authorizationStatus(for:.video).rawValue
@@ -36,21 +37,37 @@ import SwiftUI
                 try? data.write(to:directory.appendingPathComponent("PathSense-device-check.json"),options:.atomic)
             }
         }
+        func waitFor(_ seconds: Double, until condition: () -> Bool) async -> Bool {
+            let deadline = ProcessInfo.processInfo.systemUptime + seconds
+            while !condition() {
+                if ProcessInfo.processInfo.systemUptime >= deadline { return false }
+                do { try await Task.sleep(for: .milliseconds(100)) } catch { return false }
+            }
+            return !Task.isCancelled
+        }
         save("opened"); scanner.entry="带我去教室门口"; scanner.begin()
-        try? await Task.sleep(for:.seconds(10)); save("camera")
-        let original=scanner.camera.latestPose()?.id
-        if scanner.canGuide {scanner.pauseOrResume()}
-        try? await Task.sleep(for:.milliseconds(300)); report.pausesClearCamera=scanner.isPaused && scanner.camera.latestPose()==nil
+        defer { scanner.feedback.devicePulse=nil; scanner.feedback.deviceSpeech=nil; scanner.end() }
+        let ready = await waitFor(35) { scanner.canGuide && self.report.observations > 0 && self.report.nearFields > 0 }
+        guard ready, let original=scanner.camera.latestPose()?.id else { save("waiting_for_camera_or_permission"); return }
+        save("camera"); scanner.pauseOrResume()
+        report.pausesClearCamera = await waitFor(5) { scanner.isPaused && scanner.camera.session == nil && scanner.camera.latestPose() == nil }
+        guard report.pausesClearCamera else { save("pause_incomplete"); return }
         scanner.feedback.deviceSpeech={ [weak self] text, ended in
             guard text=="请站定。" else {return}; if ended {self?.report.voiceFinished=true} else {self?.report.voicedChinese=true}
         }
         scanner.feedback.devicePulse={ [weak self] pulse in self?.report.hapticPulses.append(pulse) }
         scanner.feedback.deliver("请站定。",sound:true,haptic:.alignment,interrupt:true)
-        try? await Task.sleep(for:.seconds(2)); scanner.feedback.deliver("",sound:false,haptic:.emergency)
-        try? await Task.sleep(for:.milliseconds(400)); save("feedback")
-        if scanner.isPaused {scanner.pauseOrResume()}
-        try? await Task.sleep(for:.seconds(5)); if let original, let revised=scanner.camera.latestPose()?.id {report.freshSession = !original.sameWorld(revised)}
-        scanner.end(); scanner.feedback.devicePulse=nil;scanner.feedback.deviceSpeech=nil;save("finished")
+        _ = await waitFor(10) { self.report.voiceFinished }
+        scanner.feedback.deliver("",sound:false,haptic:.emergency)
+        _ = await waitFor(2) { self.report.hapticPulses.contains("stop-second") }
+        save("feedback")
+        let observedBeforeResume = report.observations
+        scanner.pauseOrResume()
+        report.freshSession = await waitFor(20) {
+            guard scanner.canGuide, let next = scanner.camera.latestPose()?.id else { return false }
+            return !original.sameWorld(next) && self.report.observations > observedBeforeResume
+        }
+        save(report.freshSession ? "finished" : "resume_incomplete")
     }
 }
 #endif

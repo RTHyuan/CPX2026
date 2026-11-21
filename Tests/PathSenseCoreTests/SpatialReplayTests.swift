@@ -146,4 +146,35 @@ final class SpatialReplayTests: XCTestCase {
         XCTAssertEqual(m.peakSameStationSweeps,2)
     }
 
+    func testGridVetoAfterMovingAChairRequiresNewEvidence() {
+        var grid = LocalGrid()
+        var blocked = near(pose(1), .occupied)
+        let front = blocked.sectors.firstIndex { $0.angle == 0 }!
+        blocked.sectors[front].nearest = 1.2
+        XCTAssertEqual(grid.reconcile(blocked).front, .occupied)
+        XCTAssertEqual(grid.reconcile(near(pose(2))).front, .unknown)
+        XCTAssertEqual(grid.reconcile(near(pose(3))).front, .free)
+        XCTAssertEqual(grid.reconcile(near(pose(4), .unknown)).front, .unknown)
+        XCTAssertEqual(grid.reconcile(near(pose(5, world: 2), .unknown)).front, .unknown)
+    }
+
+    func testPauseAndTrackingResetPreserveTimingButInvalidateDoorIdentity() {
+        var measures = WalkMeasures()
+        measures.openSegment(at: 2)
+        measures.lock(1, in: pose(1).id)
+        measures.hazard(at: 3)
+        measures.requested(at: 3.1)
+        measures.speech(at: 3.3, ended: false)
+        measures.closeSegment(at: 5)
+        measures.openSegment(at: 10)
+        measures.sample(pose(100, world: 2), scanning: true)
+        measures.lock(1, in: pose(100, world: 2).id)
+        measures.finish(12, door: 1, manual: true)
+        XCTAssertEqual(measures.started, 2)
+        XCTAssertEqual(measures.activeSeconds, 5)
+        XCTAssertEqual(measures.segments, 2)
+        XCTAssertEqual(measures.stops.first?.speechStarted, 3.3)
+        XCTAssertFalse(measures.identityContinuous)
+    }
+
 }

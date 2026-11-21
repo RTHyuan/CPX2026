@@ -1,12 +1,9 @@
 import Foundation
-import CoreML
 
 @main enum VerifyVision {
     static func main() throws {
         let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let model = try MLModel.compileModel(at: root.appendingPathComponent("App/Resources/SignContext.mlmodel"))
-        defer { try? FileManager.default.removeItem(at: model) }
-        let reader = SignVision(modelURL: model)
+        let reader = SignVision()
         let examples: [(String, String, SignKind)] = [("nearby", "305", .neighbor), ("span", "305", .range), ("similar", "305", .neighbor), ("target", "305", .target), ("index", "305", .directory), ("facility", "电梯", .facility), ("blank", "305", .unclear)]
         var failures = 0
         for (name, target, expected) in examples {
@@ -15,12 +12,6 @@ import CoreML
             let pass = result.reading.kind == expected
             if !pass { failures += 1 }
             print("\(pass ? "PASS" : "FAIL") \(name) → \(result.reading.kind.rawValue) \(result.lines.map { "\($0.text) (\($0.confidence))" }.joined(separator: " | "))")
-        }
-        let layouts: [(LayoutFeatures, Bool)] = [(.init(numbers: 1, lines: 1, separators: 0, directoryWords: 0),false),(.init(numbers: 4, lines: 7, separators: 1, directoryWords: 1),true),(.init(numbers: 1, lines: 2, separators: 0, directoryWords: 0),false),(.init(numbers: 5, lines: 4, separators: 3, directoryWords: 0),true)]
-        for (layout, expected) in layouts {
-            let probability = reader.directoryLikelihood(layout)
-            let pass = probability.map { ($0 >= 0.85) == expected } ?? false
-            if !pass { failures += 1 }; print("\(pass ? "PASS" : "FAIL") Core ML \(layout.values) → \(probability ?? -1)")
         }
         failures += try verifyCameraFrames(root: root, reader: reader)
         let external = ProcessInfo.processInfo.environment["PATHSENSE_EXTERNAL_SIGNS"].map { URL(fileURLWithPath: $0) }
