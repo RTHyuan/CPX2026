@@ -1,0 +1,15 @@
+.DS_Store
+.build/
+.build-local/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcresult
+.env
+.env.*
+*.mobileprovision
+*.p12
+/IMG_0091.HEIC
+/Submission/private/
+/output/*.zip
+/Submission/poster/
