@@ -193,6 +193,37 @@ final class GroundImageTests: XCTestCase {
         }
     }
 
+    func testUnknownPassageCoachesOnceAcrossPhoneTiltWithNoForwardPermission() throws {
+        let image = try recorded(.lectureTheatre), perception = GroundAssessment()
+        var nav = SpatialNavigator(doorTarget: false), delivery = CueDelivery()
+        var cues: [LocalCue] = []
+        for i in 0..<70 {
+            let p = pose(i, yaw: Double(i % 3 - 1) * 1.5, pitch: i < 35 ? -6 : 34)
+            nav.pose(p)
+            nav.risk(perception.inspect(image: image, pose: p, planes: [], features: [], observations: [], personOK: true))
+            if let cue = nav.cue(), delivery.take(cue, at: p.time) { cues.append(cue) }
+            XCTAssertFalse(nav.canAdvance)
+        }
+        XCTAssertEqual(cues, [.lookAround, .tiltDown, .scanSideGround])
+    }
+
+    func testRaisedCameraCanReadSignWhileDepthIsMissing() throws {
+        let engine = GroundAssessment()
+        var nav = SpatialNavigator(doorTarget: false)
+        let sign = Sighting(kind: .sign, box: .init(0.40,0.38,0.63,0.53), confidence: 0.9, label: "BSG33")
+        for i in 0..<55 {
+            let p = pose(i, pitch: -12)
+            nav.pose(p)
+            let field = engine.inspectLidar(pose: p, depth: nil, planes: [], observations: [], personOK: true, exposed: true)
+            XCTAssertFalse(field.visible); XCTAssertTrue(field.canCoachFraming)
+            nav.risk(field)
+            if i >= 25 { _ = nav.register([sign], at: p, local: true) }
+            XCTAssertEqual(nav.cue(), (16..<25).contains(i) ? .tiltDown : .lookAround)
+            XCTAssertFalse(nav.canAdvance)
+        }
+        XCTAssertEqual(nav.book.records.filter { $0.label == "BSG33" }.count, 1)
+    }
+
     func testRealRTRPixelsThroughGridToBypassAndBodyConfirmation() throws {
         let loop = GroundAssessment(), theatre = try recorded(.lectureTheatre), sign = try recorded(.overheadSign)
         let points = features

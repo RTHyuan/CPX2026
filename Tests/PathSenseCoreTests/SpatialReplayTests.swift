@@ -127,7 +127,9 @@ final class SpatialReplayTests: XCTestCase {
             _ = nav.register([object(p, door, tag: 42)], at: p, local: true)
         }
         XCTAssertEqual(nav.cue(), .noConfirmedAisle)
-        XCTAssertEqual(nav.cue(), LocalCue(kind: .found, text: "找到门了。"))
+        let found = LocalCue(kind: .found, text: "找到门了。")
+        XCTAssertEqual(nav.cue(), found)
+        nav.didDeliver(found)
         XCTAssertNil(nav.cue())
         XCTAssertTrue(sweep(at: 0.04).isEmpty)
         let relocated = sweep(at: 0.70)
@@ -192,13 +194,47 @@ final class SpatialReplayTests: XCTestCase {
             _ = nav.register([object(p, goal, tag: 42)], at: p, local: true)
         }
         let door = try XCTUnwrap(nav.record(nav.door))
-        XCTAssertEqual(nav.cue(), LocalCue(kind: .found, text: "找到门了。"))
+        let found = try XCTUnwrap(nav.cue())
+        XCTAssertEqual(found, LocalCue(kind: .found, text: "找到门了。"))
+        nav.didDeliver(found)
         XCTAssertFalse(nav.arrived)
         let moved = pose(2, x: 0.55)
         nav.pose(moved); nav.risk(near(moved))
         XCTAssertNil(door.bearing(at: moved))
         XCTAssertEqual(nav.cue(), LocalCue(kind: .scan, text: "请把镜头转向门框。"))
         XCTAssertFalse(nav.canAdvance)
+    }
+
+    func testDoorCanBeSeenAboveTheUnobservedFloor() throws {
+        var nav = SpatialNavigator(doorTarget: true)
+        let door = V3(0, 1.4, -4)
+        for frame in 0...1 {
+            let p = pose(frame)
+            nav.pose(p); _ = nav.register([object(p, door, tag: 42)], at: p, local: true)
+        }
+        XCTAssertEqual(nav.cue()?.kind, .found)
+        nav.pose(pose(2, 85))
+        XCTAssertNotEqual(nav.cue()?.kind, .found)
+        XCTAssertFalse(nav.arrived); XCTAssertFalse(nav.canAdvance)
+    }
+
+    func testDoorNoticeSurvivesOngoingSideTurnAndYieldsToNewPerson() throws {
+        var nav = SpatialNavigator(doorTarget: true), delivery = CueDelivery()
+        let goal = V3(0, 1.4, -4)
+        var accepted: [LocalCue] = []
+        for frame in 0..<30 {
+            let p = pose(frame)
+            nav.pose(p); nav.risk(near(p, .unknown, side: -30))
+            _ = nav.register([object(p, goal, tag: 42)], at: p, local: true)
+            let cue = try XCTUnwrap(nav.cue(forwardOutstanding: delivery.forwardOutstanding))
+            if delivery.take(cue, at: p.time) { nav.didDeliver(cue); accepted.append(cue) }
+        }
+        XCTAssertEqual(accepted.map(\.kind), [.turn, .found])
+        XCTAssertFalse(nav.arrived)
+        let person = pose(30)
+        nav.pose(person); nav.risk(near(person, .unknown, person: true))
+        let stop = try XCTUnwrap(nav.cue())
+        XCTAssertEqual(stop, .obstacleStop); XCTAssertTrue(delivery.take(stop, at: person.time, cause: "person"))
     }
 
     func testPersonInterruptsAPermittedStationaryBypassEvenWithUnknownFloor() {
@@ -369,6 +405,75 @@ final class SpatialReplayTests: XCTestCase {
         let blocked = pose(14,-8,x:0.12,z:-1.95); nav.pose(blocked); nav.risk(near(blocked, drop: V3(0.1,-0.19,-2.75)))
         XCTAssertEqual(nav.cue(), .dropStop); XCTAssertEqual(nav.cueForSafety, .dropStop)
     }
+    func testRoomSearchFollowsLocalAisleWhilePlannerIsSilentOrAsksToRescan() {
+        var nav = SpatialNavigator(doorTarget: false)
+        let advice = LocalCue(kind: .scan, text: "请慢慢转动手机，补扫周围。")
+        let ticket = DecisionTicket(pose: pose(0), generation: 0, destination: "402")
+        for i in 0...7 {
+            let p = pose(i)
+            nav.pose(p); nav.risk(near(p, .unknown, side: -30))
+            if i == 6 { nav.cloudHold = advice; nav.cloudHoldUntil = p.time + 2 }
+            let cue = nav.cue(forwardOutstanding: false)
+            XCTAssertEqual(cue?.kind, .turn); XCTAssertTrue(cue?.text.contains("向左转约30度") == true)
+        }
+        for i in 8...18 {
+            let p = pose(i, -30)
+            nav.pose(p); nav.risk(near(p)); _ = nav.cue(forwardOutstanding: false)
+        }
+        XCTAssertEqual(nav.cue()?.kind, .face)
+        nav.faceForward(); XCTAssertEqual(nav.cue()?.kind, .advance)
+        nav.cloudHold = advice; nav.cloudHoldUntil = 5
+        XCTAssertEqual(nav.cue(forwardOutstanding: true)?.kind, .advance)
+        XCTAssertNil(nav.waypoint); XCTAssertNil(nav.door)
+        let person = pose(19, -30)
+        nav.pose(person); nav.risk(near(person, person: true))
+        XCTAssertEqual(nav.cue(forwardOutstanding: true), .obstacleStop)
+        XCTAssertFalse(ticket.current(at: person, generation: nav.generation, destination: "402"))
+    }
+
+    func testDelayedLocalInscriptionCanBeReadFromItsOriginalStationWithoutGrantingPassage() throws {
+        var nav = SpatialNavigator(doorTarget: false)
+        let capture = pose(0), current = pose(135, 2)
+        nav.pose(capture); nav.pose(current)
+        let label = Sighting(kind: .sign, box: ImageBox(0.46,0.30,0.57,0.42), confidence: 0.91, label: "BSG33")
+        let ids = nav.register([label, object(capture, V3(0,1.4,-3))], at: capture, local: true)
+        let sign = try XCTUnwrap(nav.record(ids[0]))
+        XCTAssertEqual(sign.last.id, capture.id)
+        XCTAssertTrue(sign.signReadout(at: current, target: "BSG33")?.contains("BSG33") == true)
+        XCTAssertNil(ids[1]); XCTAssertNil(nav.waypoint); XCTAssertFalse(nav.canAdvance)
+    }
+
+    func testMeasuredDistantChairSuggestsSideAtRestButStopsAnOutstandingAdvance() {
+        func scenario(moving: Bool) -> LocalCue? {
+            var nav = SpatialNavigator(doorTarget: false)
+            for i in 0...8 {
+                let p = pose(i)
+                nav.pose(p); nav.risk(near(p, .free, side: 30)); _ = nav.cue(forwardOutstanding: false)
+            }
+            if moving { nav.faceForward(); XCTAssertEqual(nav.cue()?.kind, .advance) }
+            let p = pose(9); nav.pose(p)
+            var field = near(p, .occupied, side: 30)
+            let center = field.sectors.firstIndex { $0.angle == 0 }!
+            field.sectors[center].nearest = 1.72
+            nav.risk(field)
+            return nav.cue(forwardOutstanding: moving)
+        }
+        XCTAssertEqual(scenario(moving: true), .obstacleStop)
+        let turn = scenario(moving: false)
+        XCTAssertTrue(turn?.isAvoidanceTurn == true); XCTAssertTrue(turn?.text.contains("向右") == true)
+    }
+
+    func testLocalAisleDoesNotWalkPastPendingDestinationConfirmation() {
+        var nav = SpatialNavigator(doorTarget: false)
+        for i in 0...8 {
+            let p = pose(i); nav.pose(p); nav.risk(near(p)); _ = nav.cue(forwardOutstanding: false)
+        }
+        nav.faceForward(); XCTAssertEqual(nav.cue()?.kind, .advance)
+        nav.verifyingRoute = true
+        XCTAssertEqual(nav.cue(forwardOutstanding: true), .revokeAdvance)
+        XCTAssertNil(nav.cue(forwardOutstanding: false)); XCTAssertFalse(nav.canAdvance)
+    }
+
     func testLateReplyRotationSurvivesButPositionWorldOrTargetCancels() {
         let t=DecisionTicket(pose:pose(0),generation:3,destination:"门口")
         XCTAssertTrue(t.current(at:pose(12,60),generation:3,destination:"门口"))

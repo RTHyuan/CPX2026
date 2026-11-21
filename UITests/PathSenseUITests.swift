@@ -245,14 +245,43 @@ final class PathSenseUITests: XCTestCase {
         XCTAssertEqual(metrics["changedDoor"] as? Bool,false);XCTAssertEqual(metrics["manuallyConfirmed"] as? Bool,false)
         XCTAssertEqual(try XCTUnwrap(metrics["firstDoor"] as? Int),try XCTUnwrap(metrics["arrivedDoor"] as? Int))
     }
+    #if DEBUG && targetEnvironment(simulator)
     func testConsentAndDelayedProxyTurnUsesLatestCameraHeading() throws {
-        let relay=try DelayedRelay(); defer {relay.stop()}
-        let stream=Array(repeating:observation(),count:6)+Array(repeating:observation(heading:60),count:18)
-        try launch(["route-door"],trace:true,evidence:stream)
-        enableCloud(at: relay.address)
-        begin("402"); waitForMessage("向左转约30度"); XCTAssertTrue(relay.validImageAndContext)
-        app.buttons["pause"].tap();waitForMessage("已暂停")
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "route-door", withExtension: "jpg", subdirectory: "Practice"))
+        let photo = try XCTUnwrap(UIImage(contentsOfFile: url.path)?.cgImage)
+        XCTAssertEqual(photo.width, 1440); XCTAssertEqual(photo.height, 1037)
+        // Two native-pixel windows of the same CC0 photograph. The open passage is on the
+        // right of the first window, on the left of the second. The yaw is a tape measurement.
+        let pictures = try [0, 540].map { x in
+            let window = try XCTUnwrap(photo.cropping(to: CGRect(x: x, y: 0, width: 900, height: 1037)))
+            return try XCTUnwrap(UIImage(cgImage: window).jpegData(compressionQuality: 0.85))
+        }
+        let uploads = try pictures.map { try XCTUnwrap(UIImage(data: $0)?.jpegData(compressionQuality: 0.65)) }
+        let phase = try ReplayPhase()
+        let relay = try DelayedRelay(phase: phase, uploads: uploads)
+        defer {
+            let proof = XCTAttachment(string: relay.transcript); proof.name = "delayed-cloud-wire"; proof.lifetime = .keepAlways; add(proof)
+            relay.stop()
+        }
+        var setup = observation(sectors: []); setup["tracking"] = "limited"
+        // No local target or remembered aisle at 0°. At +60° the strips are symmetric,
+        // so local clearance alone prefers straight ahead.
+        let tape = [setup, observation(sectors: []), observation(heading: 60, sectors: [-60,-30,0,30,60], picture: 1)]
+        try launch(voice: true, trace: true, evidence: tape, phaseName: phase.name, fieldPixels: pictures)
+        enableCloud(at: relay.address); begin("402")
+        phase.select(1)
+        wait(for: [relay.firstReceived, relay.rotatedReceived], timeout: 18, enforceOrder: true)
+        let expected = "向左转约30度。"
+        XCTAssertEqual(relay.instructionAfterReply, expected, relay.transcript)
+        // The second POST contains the instruction actually dispatched by the app while the
+        // three-second passage anchor was live. The speech delegate preserves that cue in the UI.
+        waitForOutput("/" + expected)
+        XCTAssertTrue(events.contains { SpeechCallback.started.matches($0, label: expected) })
+        XCTAssertFalse(events.contains { $0.contains(DelayedRelay.originalSpeech) })
+        attachFeedback("delayed-cloud-presented-cue", expected: expected)
+        app.buttons["pause"].tap(); waitForMessage("已暂停")
     }
+    #endif
 
     private func enableCloud(at url: String) {
         app.buttons["help"].tap(); let address=app.textFields["proxyAddress"]
@@ -518,6 +547,104 @@ final class PathSenseUITests: XCTestCase {
         try checkOneLocalStop(metrics)
     }
 
+    private func launchFieldNavigation(_ frames: [String], tape: [[String:Any]], phase: ReplayPhase) throws {
+        let pixels = try frames.map(fieldPhoto)
+        let inputs: [String:Any] = ["realJPEGsByPictureIndex": frames, "injectedSpatialPhases": tape]
+        let record = XCTAttachment(data: try JSONSerialization.data(withJSONObject: inputs, options: [.prettyPrinted, .sortedKeys]),
+                                   uniformTypeIdentifier: "public.json")
+        record.name = "field-navigation-inputs.json"; record.lifetime = .keepAlways; add(record)
+        try launch(voice: true, trace: true, evidence: tape, phaseName: phase.name, fieldPixels: pixels)
+    }
+
+    private func waitForSpokenCue(_ phrases: [String], callback: SpeechCallback = .started,
+                                  file: StaticString = #filePath, line: UInt = #line) {
+        waitUntil("Expected \(phrases) on screen and its \(callback.rawValue) callback", timeout: 35, file: file, line: line) {
+            guard let sample = self.sampleFeedback(), phrases.allSatisfy(sample.label.contains) else { return false }
+            return sample.events.contains { callback.matches($0, label: sample.label) }
+        }
+    }
+
+    func testFieldPhoneTiltThenLeftAisleAndFrontConfirmation() throws {
+        let phase = try ReplayPhase()
+        let tape = [observation(pitchDown: -4, sectors: []), observation(pitchDown: 34, sectors: []),
+                    observation(pitchDown: 34, sectors: [-30]), observation(heading: -30, pitchDown: 34, sectors: [0])]
+        try launchFieldNavigation(["rtr1-32.0.jpg"], tape: tape, phase: phase)
+        begin("402")
+        waitForSpokenCue(["手机朝前", "向下倾"], callback: .finished)
+        XCTAssertFalse(app.buttons["bodyForward"].exists)
+        phase.select(1)
+        waitForSpokenCue(["保持这个角度", "两侧"], callback: .finished)
+        phase.select(2)
+        waitForSpokenCue(["原地", "左转"], callback: .finished)
+        XCTAssertFalse(app.buttons["bodyForward"].exists)
+        phase.select(3)
+        waitForSpokenCue(["已看清前方", "身体前方"])
+        XCTAssertTrue(app.buttons["bodyForward"].exists)
+        XCTAssertFalse(events.contains { $0 == "触觉/emergency" || $0.contains("慢行一小段") })
+        attachFeedback("field-phone-tilt-left-aisle-confirmation")
+    }
+
+    func testFieldRoomTurnsToLocalSideAisleWithoutCloudTarget() throws {
+        let phase = try ReplayPhase()
+        let tape = [observation(pitchDown: 22, sectors: []), observation(pitchDown: 22, sectors: [-45])]
+        try launchFieldNavigation(["rtr2-33.7.jpg"], tape: tape, phase: phase)
+        begin("402"); waitForLookAround()
+        let local = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "仅本机")).firstMatch
+        XCTAssertTrue(local.waitForExistence(timeout: 8))
+        phase.select(1)
+        waitForSpokenCue(["原地", "左转"], callback: .finished)
+        XCTAssertFalse(app.buttons["bodyForward"].exists)
+        XCTAssertFalse(events.contains { $0 == "触觉/emergency" || $0 == "触觉/alignment" || $0.contains("慢行一小段") })
+        attachFeedback("field-402-local-left-turn")
+    }
+
+    func testFieldMeasuredDropRightTurnBodyConfirmationAndPersonStop() throws {
+        let phase = try ReplayPhase()
+        // The step is visible in RTR1. Its world point, camera poses, free sectors and final person box are injected.
+        // Alternating headings keep the lip in the forward strip but cannot establish three consistent side views.
+        var lip = observation(pitchDown: 22, sectors: [45], offsets: [-16, 16])
+        lip["measuredDrop"] = ["x": 0.0, "y": -0.18, "z": -1.1]
+        let side = observation(pitchDown: 22, sectors: [0, 45]) // The remembered lip still vetoes straight ahead.
+        let facing = observation(heading: 45, pitchDown: 22, sectors: [0, 60], picture: 1)
+        var crossing = facing
+        crossing["features"] = [["kind": "person", "box": [0.42, 0.28, 0.58, 0.9], "confidence": 0.91]]
+        try launchFieldNavigation(["rtr1-32.0.jpg", "rtr2-33.7.jpg"], tape: [lip, side, facing, crossing], phase: phase)
+        begin("402")
+        let body = app.buttons["bodyForward"]
+        waitForSpokenCue(["停步", "下行台阶"], callback: .finished)
+        let stopped = events
+        XCTAssertEqual(stopped.filter { $0 == "触觉/emergency" }.count, 1)
+        XCTAssertFalse(stopped.contains { $0.contains("右转") || $0.contains("左转") || $0.contains("慢行一小段") })
+        XCTAssertFalse(body.exists)
+
+        phase.select(1)
+        waitForSpokenCue(["原地", "右转"], callback: .finished)
+        XCTAssertFalse(body.exists)
+        XCTAssertFalse(events.contains("触觉/alignment"))
+        phase.select(2)
+        waitForOutput("触觉/alignment") // Alignment is a one-shot silent pulse.
+        waitForSpokenCue(["身体前方"], callback: .finished)
+        XCTAssertTrue(body.waitForExistence(timeout: 12))
+        XCTAssertFalse(events.contains { $0.contains("慢行一小段") }, "Fresh clearance and alignment still need the user's tap")
+        body.tap()
+        waitForSpokenCue(["慢行一小段"])
+
+        phase.select(3) // Same pixels, pose and free sectors. Only the person enters the walking strip.
+        waitForSpokenCue(["先停一下"], callback: .finished)
+        XCTAssertFalse(body.exists)
+        let trace = events
+        let advance = try XCTUnwrap(trace.lastIndex { $0.hasPrefix("开读/") && $0.contains("慢行一小段") })
+        XCTAssertEqual(trace.dropFirst(advance + 1).filter { $0 == "触觉/emergency" }.count, 1)
+        attachFeedback("field-402-drop-turn-advance-person")
+        app.buttons["pause"].tap(); waitForMessage("已暂停")
+        let metrics = try attachMetrics(button: "pause", name: "field-402-drop-and-person-stops")
+        let stops = try XCTUnwrap(metrics["stops"] as? [[String:Double]])
+        XCTAssertEqual(stops.count, 2)
+        let person = try XCTUnwrap(stops.last)
+        let delay = try XCTUnwrap(person["requestedAt"]) - XCTUnwrap(person["detectedAt"])
+        XCTAssertTrue((0..<0.55).contains(delay), "Person stop dispatch took \(delay)s after detection")
+    }
+
     func testRealRelayRecognizesPublicDoorPhoto() throws {
         guard let pairing = Self.runnerSetting("PATHSENSE_LIVE_PROXY") else {
             throw XCTSkip("Set TEST_RUNNER_PATHSENSE_LIVE_PROXY to the Mac relay pairing URL to run the public-photo check")
@@ -630,26 +757,76 @@ private func matchesPhoto(_ pixels: [UInt8], _ reference: [UInt8]) -> Bool {
     zip(pixels, reference).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) } < reference.count * 6
 }
 
+#if DEBUG && targetEnvironment(simulator)
 private final class DelayedRelay: @unchecked Sendable {
-    private let accepted = OSAllocatedUnfairLock(initialState: false)
-    private(set) var server: LoopbackHTTP!
-    var validImageAndContext: Bool { accepted.withLock { $0 } }
+    // Annotated jambs and threshold in the first 900 × 1037 sensor window.
+    private static let opening = [560.0/900, 144.0/1037, 896.0/900, 843.0/1037]
+    static let originalSpeech = "先转向右侧过道。"
+    let firstReceived = XCTestExpectation(description: "received the first 0° JPEG")
+    let rotatedReceived = XCTestExpectation(description: "received the newer +60° JPEG after releasing the first reply")
+    private let queue = DispatchQueue(label: "PathSense.tests.delayed-cloud")
+    private var token = Int32(NOTIFY_TOKEN_INVALID)
+    private var server: LoopbackHTTP!
+    private var firstStamp: NSDictionary?, firstTime = 0.0, pending: (() -> Void)?, lastInstruction: String?
+    private var log = ["CC0 route-door.jpg; original 1440x1037; sensor windows x=0,540 width=900; heading and ground strips injected"]
     var address: String { server.address }
-    init() throws {
-        server = try LoopbackHTTP { [accepted] body, respond in
-            guard let frame = RelayFrame(body) else { respond(400, Data()); return }
-            accepted.withLock { $0 = frame.context["request"] != nil && frame.context["destination"] as? String == "402" }
-            let item: [String:Any] = ["ref":"o1", "kind":"aisle_entrance", "box":[0.78,0.3,0.856,0.7]]
-            let reply: [String:Any] = ["frame_id":frame.stamp, "action":"target_waypoint", "target_ref":"o1", "speech_zh":"先转向右侧过道。",
-                                       "uncertain":false, "hazards":[], "observations":[item]]
-            guard let data = try? JSONSerialization.data(withJSONObject: reply) else { respond(500, Data()); return }
-            DispatchQueue.global().asyncAfter(deadline: .now()+1.8) { respond(200, data) }
+    var transcript: String { queue.sync { log.joined(separator: "\n") } }
+    var instructionAfterReply: String? { queue.sync { lastInstruction } }
+
+    init(phase: ReplayPhase, uploads: [Data]) throws {
+        guard notify_register_dispatch(phase.name + ".queued.60", &token, queue, { [weak self] _ in
+            guard let self, let release = self.pending else { return }
+            self.pending = nil
+            self.log.append("App queued its +60° key. Releasing only the held 0° observation, box=\(Self.opening).")
+            release()
+        }) == NOTIFY_STATUS_OK else { throw NSError(domain: "DelayedRelay.queueNotification", code: 1) }
+        server = try LoopbackHTTP { [weak self] body, respond in
+            self?.queue.async { [weak self] in self?.receive(body, respond: respond, phase: phase, uploads: uploads) }
         }
     }
-    func stop() { server.stop() }
+
+    private func receive(_ body: Data, respond: @escaping LoopbackHTTP.Reply, phase: ReplayPhase, uploads: [Data]) {
+        guard let frame = RelayFrame(body), frame.blind, frame.context["destination"] as? String == "402",
+              let capture = frame.context["capture"] as? [String:Any], let request = frame.context["request"] as? [String:Any],
+              let sample = capture["sample"] as? [String:Any], let time = sample["time"] as? Double,
+              let captureYaw = capture["heading"] as? Double, let requestYaw = request["heading"] as? Double,
+              let number = frame.stamp["frame"] as? Int, let trigger = frame.context["trigger"] as? String,
+              let instruction = frame.context["last_instruction"] as? String else {
+            log.append("Rejected malformed packet, local features or wrong destination"); respond(422, Data()); return
+        }
+        let first = firstStamp == nil
+        let photoMatched = frame.jpeg == uploads[first ? 0 : 1]
+        if log.count < 14 { log.append("POST \(frame.stamp) t=\(time) capture=\(captureYaw) request=\(requestYaw) trigger=\(trigger) photoMatched=\(photoMatched) last_instruction=\(instruction)") }
+        guard photoMatched else { respond(422, Data()); return }
+        if first {
+            guard trigger == "first_observation", abs(captureYaw) < 0.01, abs(requestYaw) < 0.01,
+                  let k = sample["intrinsics"] as? [Double], k.count == 9, let width = sample["width"] as? Int else { respond(422, Data()); return }
+            let centerX = (Self.opening[0] + Self.opening[2]) * 0.5 * Double(width)
+            let ray = atan2(centerX - k[6], k[0]) * 180 / .pi
+            log.append("Capture ray from transmitted intrinsics: \(ray)°")
+            guard abs(ray - 30) < 1 else { respond(422, Data()); return }
+        } else {
+            guard pending == nil, let stamp = firstStamp, let prior = stamp["frame"] as? Int, number > prior, time > firstTime,
+                  frame.stamp["session"] as? String == stamp["session"] as? String, frame.stamp["world"] as? Int == stamp["world"] as? Int,
+                  abs(captureYaw - 60) < 0.01, abs(requestYaw - 60) < 0.01 else { respond(422, Data()); return }
+        }
+        let opening: [String:Any] = ["ref":"opening", "kind":"aisle_entrance", "box":Self.opening]
+        let reply: [String:Any] = ["frame_id":frame.stamp, "action":first ? "target_waypoint" : "wait",
+                                  "target_ref":first ? "opening" as Any : NSNull(), "speech_zh":first ? Self.originalSpeech : "可以慢慢转动手机，看看周围。",
+                                  "uncertain":!first, "hazards":[], "observations":first ? [opening] : []]
+        guard let bytes = try? JSONSerialization.data(withJSONObject: reply) else { respond(500, Data()); return }
+        if first {
+            firstStamp = frame.stamp; firstTime = time
+            pending = { respond(200, bytes) }
+            firstReceived.fulfill(); phase.select(2)
+        } else {
+            if lastInstruction == nil { lastInstruction = instruction; rotatedReceived.fulfill() }
+            respond(200, bytes)
+        }
+    }
+    func stop() { notify_cancel(token); server.stop(); queue.sync { pending = nil } }
 }
 
-#if DEBUG && targetEnvironment(simulator)
 /// Only this loopback mock interprets the field-video pictogram. It has no upstream connection.
 private final class FieldSignMock {
     private let seen = OSAllocatedUnfairLock(initialState: (baseline: false, changed: false))

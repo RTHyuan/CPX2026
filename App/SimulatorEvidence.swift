@@ -16,6 +16,8 @@ struct SimulatorEvidence: Decodable {
     let reason: String?
     let picture: Int?
     let readSigns: Bool?
+    /// Lower landing in session-world metres, measured on the current forward walking strip.
+    let measuredDrop: V3?
 
     func events(session: UUID, sequence: Int, time: Double, width: Int, height: Int) -> (FramePose, NearField) {
         let offsets = headingOffsets ?? []
@@ -27,11 +29,16 @@ struct SimulatorEvidence: Decodable {
         let pose = FramePose(id: .init(session: session, world: world, frame: sequence), time: time,
                              transform: [c,0,s,0, s*sp,cp,-c*sp,0, -s*cp,sp,c*cp,0, position.x,position.y,position.z,1],
                              intrinsics: [focal,0,0,0,focal,0,w/2,h/2,1], width: width, height: height, exif: 1, tracking: tracking)
-        let bins = stride(from: -60, through: 60, by: 15).map { angle in
-            Sector(angle: angle, state: occupied && angle == 0 ? .occupied : (sectors.contains(angle) ? .free : .unknown))
+        let bins = stride(from: -60, through: 60, by: 15).map { angle -> Sector in
+            if angle == 0, let measuredDrop {
+                return Sector(angle: angle, state: .occupied, nearest: position.groundDistance(measuredDrop),
+                              stepEvidence: .measuredDrop(measuredDrop))
+            }
+            return Sector(angle: angle, state: occupied && angle == 0 ? .occupied : (sectors.contains(angle) ? .free : .unknown))
         }
         return (pose, NearField(pose: pose, visible: tracking == "normal", sectors: bins,
-                                hazards: features.filter { $0.kind.mobile || $0.kind == .steps }, reason: reason))
+                                hazards: features.filter { $0.kind.mobile || $0.kind == .steps }, reason: reason,
+                                canCoachFraming: tracking == "normal"))
     }
 }
 

@@ -1,0 +1,41 @@
+{
+  "startedAt": "2026-11-22T05:07:28+08:00",
+  "runID": "13020174-A40C-4D02-832C-2AAFC4076AFE",
+  "freshReport": true,
+  "device": "iPhone 17 Pro",
+  "deviceReality": "physical",
+  "systemVersion": "27.2.1",
+  "transport": "wired",
+  "bundleID": "org.crosspointx.pathsense",
+  "build": "10",
+  "minimumOS": "26.0",
+  "install": "success",
+  "selfCheck": {
+    "poses": 662,
+    "normalPoses": 0,
+    "nearFields": 96,
+    "observations": 19,
+    "worldTracking": true,
+    "sceneDepth": true,
+    "cameraPermission": 3,
+    "recognitionPermission": 3,
+    "micPermission": 1735552628,
+    "localMandarin": true,
+    "voicedChinese": true,
+    "voiceFinished": true,
+    "hapticPulses": [
+      "alignment",
+      "stop-first",
+      "stop-second"
+    ],
+    "pausesClearCamera": true,
+    "freshSession": true
+  },
+  "homeLaunch": "success",
+  "selfCheckDestinationSource": "pre-filled",
+  "manualAcceptance": {
+    "spokenDestination": null,
+    "perceivedSpeechAndHaptics": null,
+    "walk": null
+  }
+}

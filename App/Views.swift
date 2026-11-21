@@ -78,15 +78,26 @@ struct RootView: View {
     private var destinationEntry: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("你想去哪里？").font(.title2.bold()).accessibilityAddTraits(.isHeader)
-            Button { editing=false; scanner.dictate() } label: {
-                Label(scanner.listening ? "说完，开始导航" : "说出目的地", systemImage:scanner.listening ? "waveform" : "mic.fill")
+            Button { editing = false; scanner.dictate() } label: {
+                switch scanner.dictationPhase {
+                case .idle: Label("说出目的地", systemImage: "mic.fill")
+                case .preparing: Label("正在打开麦克风…", systemImage: "mic")
+                case .listening: Label("说完，开始导航", systemImage: "waveform")
+                case .finishing: Label("正在确认目的地…", systemImage: "text.bubble")
+                }
             }.buttonStyle(SignButton(tone:.primary)).accessibilityIdentifier("speakDestination")
-            if scanner.listening { Button("取消听写") { scanner.cancelDictation() }.buttonStyle(SignButton()) }
+            if scanner.listening {
+                if scanner.dictationPhase == .listening && scanner.entry.isEmpty {
+                    Text("正在听，请说出目的地。").font(.callout).accessibilityIdentifier("dictationReady")
+                }
+                Button("取消听写") { scanner.cancelDictation() }.buttonStyle(SignButton())
+            }
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
                 TextField("房号、科室或店名", text: $scanner.entry)
                     .font(.body).textInputAutocapitalization(.never).autocorrectionDisabled()
                     .submitLabel(.go).focused($editing).onSubmit(begin)
+                    .disabled(scanner.listening)
                     .accessibilityLabel("目的地名称").accessibilityHint("也可以使用键盘听写。")
                     .accessibilityIdentifier("targetInput")
                 if editing && !scanner.entry.isEmpty {
@@ -100,8 +111,10 @@ struct RootView: View {
             if !scanner.validation.isEmpty {
                 Text(scanner.validation).font(.callout).foregroundStyle(.red).accessibilityIdentifier("validation")
             }
-            Button(action: begin) { Label("开始导航", systemImage: "location.fill") }
-                .buttonStyle(SignButton()).accessibilityIdentifier("startLive")
+            if !scanner.listening {
+                Button(action: begin) { Label("开始导航", systemImage: "location.fill") }
+                    .buttonStyle(SignButton()).accessibilityIdentifier("startLive")
+            }
             Text("站定后慢慢转动手机，听取沿途的标识提示。")
                 .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 .padding(.leading, 4)
@@ -214,9 +227,9 @@ struct RootView: View {
             if let preview = scanner.replayPreview {
                 Image(uiImage: preview).resizable().aspectRatio(contentMode: .fit).frame(maxWidth: .infinity).background(.black)
             } else { Color.black }
-        } else { CameraPreview(session: scanner.camera.session) }
+        } else { CameraPreview(camera: scanner.camera) }
         #else
-        CameraPreview(session: scanner.camera.session)
+        CameraPreview(camera: scanner.camera)
         #endif
     }
     private var instructions: some View {
@@ -224,6 +237,7 @@ struct RootView: View {
             List {
                 info("开始导航", "location", "点“说出目的地”，例如“带我去教室门口”。也可以输入房号、科室或店名。首次导航请允许后置相机。")
                 info("查看路牌", "viewfinder", "转动手机环顾四周。看到牌时，让名称、楼层和对应箭头一起入镜。导航会记住标识的位置。")
+                info("沿平坦过道行走", "figure.walk", "把手机朝向身体前方，略向下倾约三十至四十五度。按提示原地转向，轻震后点“手机已朝向身体前方”。听到慢行提示后再走。遇到台阶，留在原地向两侧扫描。若只有台阶，请陪同人员协助。")
                 info("现场核对", "signpost.right", "请核对通道和独立门牌后再确认。行走和避障时，继续使用惯常的出行辅助。")
                 info("相机与隐私", "lock", "位姿、近场通行图和识别默认在本次导航中处理。启用云端后，选中的画面、目的地、相关位姿和线索会经演示 Mac 发给 DeepSeek。暂停、进入后台或结束会停止采集和发送。中文语音输入使用本机识别。")
                 Section("云端视觉") {

@@ -13,7 +13,8 @@ extension FloorImage {
         let w=96, h=96
         var pixels=[UInt8](repeating:0,count:w*h)
         guard CVPixelBufferGetPlaneCount(buffer) >= 1 else { return nil }
-        CVPixelBufferLockBaseAddress(buffer,.readOnly); defer { CVPixelBufferUnlockBaseAddress(buffer,.readOnly) }
+        guard CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess else { return nil }
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
         guard let base=CVPixelBufferGetBaseAddressOfPlane(buffer,0)?.assumingMemoryBound(to:UInt8.self) else { return nil }
         let stride=CVPixelBufferGetBytesPerRowOfPlane(buffer,0)
         let width=CVPixelBufferGetWidthOfPlane(buffer,0), height=CVPixelBufferGetHeightOfPlane(buffer,0)
@@ -28,37 +29,73 @@ extension FloorImage {
 extension FloorPatch {
     init?(_ plane:ARPlaneAnchor, camera:V3) {
         guard plane.alignment == .horizontal else { return nil }
-        switch plane.classification { case .floor, .none: break; default: return nil }
+        let surface: Surface
+        switch plane.classification {
+        case .floor: surface = .floor
+        case .none: surface = .unclassified
+        default: surface = .nonFloor
+        }
         let matrix=plane.transform
         let y=Double(matrix.columns.3.y)
         guard (0.55...2.15).contains(camera.y-y) else { return nil }
         let polygon=plane.geometry.boundaryVertices.map { p in let q=matrix*SIMD4<Float>(p,1); return V3(Double(q.x),Double(q.y),Double(q.z)) }
         guard polygon.count>=3 else { return nil }
-        self.init(y:y,polygon:polygon)
+        self.init(y:y,polygon:polygon,surface:surface)
+    }
+}
+
+extension LidarDepthFrame {
+    init?(_ data: ARDepthData, pose: FramePose) {
+        let map = data.depthMap
+        guard let confidence = data.confidenceMap else { return nil }
+        let width = CVPixelBufferGetWidth(map), height = CVPixelBufferGetHeight(map)
+        guard CVPixelBufferGetPixelFormatType(map) == kCVPixelFormatType_DepthFloat32,
+              CVPixelBufferGetPixelFormatType(confidence) == kCVPixelFormatType_OneComponent8,
+              CVPixelBufferGetWidth(confidence) == width, CVPixelBufferGetHeight(confidence) == height,
+              CVPixelBufferLockBaseAddress(map, .readOnly) == kCVReturnSuccess else { return nil }
+        defer { CVPixelBufferUnlockBaseAddress(map, .readOnly) }
+        guard CVPixelBufferLockBaseAddress(confidence, .readOnly) == kCVReturnSuccess else { return nil }
+        defer { CVPixelBufferUnlockBaseAddress(confidence, .readOnly) }
+        guard let depths = CVPixelBufferGetBaseAddress(map), let qualities = CVPixelBufferGetBaseAddress(confidence) else { return nil }
+        let depthStride = CVPixelBufferGetBytesPerRow(map), confidenceStride = CVPixelBufferGetBytesPerRow(confidence)
+        self.init(pose: pose, width: width, height: height) { x, y in
+            let quality = qualities.load(fromByteOffset: y * confidenceStride + x, as: UInt8.self)
+            let metres = depths.load(fromByteOffset: y * depthStride + x * MemoryLayout<Float>.stride, as: Float.self)
+            return (Double(metres), quality)
+        }
     }
 }
 
 final class NearVision {
-    private let assessment=GroundAssessment()
-    func inspect(_ frame: ARFrame, pose p: FramePose, semantic:[Sighting]) -> NearField {
-        let image=FloorImage(frame.capturedImage,pose:p)
-        guard image?.visible == true, p.normal else {
-            return assessment.inspect(image:image,pose:p,planes:[],features:[],observations:[],personOK:false)
+    private let assessment = GroundAssessment()
+    // Camera.run enables this semantic on supporting devices. A missing capture on such a
+    // device must invalidate depth proof rather than falling through to a monocular clear.
+    private let usesDepth = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+
+    func inspect(_ frame: ARFrame, pose p: FramePose, semantic: [Sighting]) -> NearField {
+        let image = FloorImage(frame.capturedImage, pose: p)
+        let usable = usesDepth ? image?.exposed == true : image?.visible == true
+        guard usable, p.normal else {
+            if usesDepth {
+                return assessment.inspectLidar(pose: p, depth: nil, planes: [], observations: [], personOK: false, exposed: false)
+            }
+            return assessment.inspect(image: image, pose: p, planes: [], features: [], observations: [], personOK: false)
         }
-        let human=VNDetectHumanRectanglesRequest(); human.upperBodyOnly=false
-        let handler=VNImageRequestHandler(cvPixelBuffer:frame.capturedImage,orientation:CGImagePropertyOrientation(rawValue:UInt32(p.exif)) ?? .right)
-        let personOK=(try? handler.perform([human])) != nil
-        let humans: [Sighting] = (human.results ?? []).filter { $0.confidence >= 0.48 }.map { .init(kind:.person,box:ImageBox(vision:$0.boundingBox),confidence:Double($0.confidence)) }
-        let planes=frame.anchors.compactMap { ($0 as? ARPlaneAnchor).flatMap { FloorPatch($0,camera:p.position) } }
-        let depth=frame.sceneDepth
-        if let depth { CVPixelBufferLockBaseAddress(depth.depthMap,.readOnly); if let c=depth.confidenceMap { CVPixelBufferLockBaseAddress(c,.readOnly) } }
-        defer { if let depth { CVPixelBufferUnlockBaseAddress(depth.depthMap,.readOnly); if let c=depth.confidenceMap { CVPixelBufferUnlockBaseAddress(c,.readOnly) } } }
-        return assessment.inspect(image:image,pose:p,planes:planes,features:frame.rawFeaturePoints?.points.map(V3.init) ?? [],
-                                  observations:semantic+humans,personOK:personOK,depth:depth.map { data in { uv in Self.range(data,uv) } })
-    }
-    private static func range(_ depth:ARDepthData,_ uv:(Double,Double)) -> Double? {
-        let map=depth.depthMap, x=min(CVPixelBufferGetWidth(map)-1,Int(uv.0*Double(CVPixelBufferGetWidth(map)))), y=min(CVPixelBufferGetHeight(map)-1,Int(uv.1*Double(CVPixelBufferGetHeight(map))))
-        guard let data=CVPixelBufferGetBaseAddress(map),let conf=depth.confidenceMap,let bytes=CVPixelBufferGetBaseAddress(conf), bytes.load(fromByteOffset:y*CVPixelBufferGetBytesPerRow(conf)+x,as:UInt8.self)>=1 else {return nil}
-        let d=Double(data.load(fromByteOffset:y*CVPixelBufferGetBytesPerRow(map)+x*4,as:Float.self)); return d.isFinite && d>0 ? d:nil
+        let human = VNDetectHumanRectanglesRequest()
+        human.upperBodyOnly = false
+        let handler = VNImageRequestHandler(cvPixelBuffer: frame.capturedImage,
+            orientation: CGImagePropertyOrientation(rawValue: UInt32(p.exif)) ?? .right)
+        let personOK = (try? handler.perform([human])) != nil
+        let humans: [Sighting] = (human.results ?? []).filter { $0.confidence >= 0.48 }.map {
+            .init(kind: .person, box: ImageBox(vision: $0.boundingBox), confidence: Double($0.confidence))
+        }
+        let planes = frame.anchors.compactMap { ($0 as? ARPlaneAnchor).flatMap { FloorPatch($0, camera: p.position) } }
+        if usesDepth {
+            let depth = frame.sceneDepth.flatMap { LidarDepthFrame($0, pose: p) }
+            return assessment.inspectLidar(pose: p, depth: depth, planes: planes, observations: semantic + humans,
+                                           personOK: personOK, exposed: usable, image: image)
+        }
+        return assessment.inspect(image: image, pose: p, planes: planes, features: frame.rawFeaturePoints?.points.map(V3.init) ?? [],
+                                  observations: semantic + humans, personOK: personOK)
     }
 }

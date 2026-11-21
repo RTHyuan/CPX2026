@@ -1,5 +1,14 @@
 import Foundation
 
+extension SignLine {
+    static let corroboratedConfidence = 0.78
+
+    /// Landmarks use Double. Preserve the inclusive consensus threshold across Vision's Float boundary.
+    var landmarkConfidence: Double {
+        confidence == Float(Self.corroboratedConfidence) ? Self.corroboratedConfidence : Double(confidence)
+    }
+}
+
 /// A sign's layout matters. A floor label in a tenant list describes the tenant,
 /// whereas a landing plate at the lift describes the traveler's current location.
 struct RouteSite: Equatable, Hashable {
@@ -390,6 +399,25 @@ extension Landmark {
 extension WayfindingParser {
     private static func inscriptions(_ text: String) -> [String] {
         text.split(whereSeparator: \.isNewline).map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    /// Read a complete identifier and a separate, explicitly labelled copy. No destination
+    /// string is available here. A directory, range or partial number cannot supply the pair.
+    static func printedRoomPair(in lines: [SignLine]) -> (number: SignLine, caption: SignLine)? {
+        guard !lines.contains(where: { isRestriction($0.text) }) else { return nil }
+        let id = #"[A-Z]{0,3}[0-9]{1,4}[A-Z]?"#
+        let caption = #"^(?:CLASSROOM|ROOM|RM\.?)\s*[-:：]?\s*"#
+        func rows(matching pattern: String) -> [SignLine] {
+            lines.filter { !$0.bounds.isEmpty && $0.confidence >= 0.3 &&
+                SignParser.normalize($0.text).trimmingCharacters(in: .whitespaces)
+                    .range(of: pattern, options: .regularExpression) != nil }
+        }
+        let numbers = rows(matching: "^" + id + "$"), captions = rows(matching: caption + id + "$")
+        guard numbers.count == 1, captions.count == 1 else { return nil }
+        let number = numbers[0], label = captions[0]
+        guard compatibleInscription(number.text, label.text), !number.bounds.intersects(label.bounds),
+              max(number.bounds.minX, label.bounds.minX) < min(number.bounds.maxX, label.bounds.maxX) else { return nil }
+        return (number, label)
     }
 
     static func sameInscription(_ lhs: String, _ rhs: String) -> Bool {

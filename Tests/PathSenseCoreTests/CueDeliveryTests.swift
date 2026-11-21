@@ -38,6 +38,18 @@ final class CueDeliveryTests: XCTestCase {
         XCTAssertFalse(channel.take(.obstacleStop, at: 2.4, cause: "person"))
     }
 
+    func testDirectionalAvoidanceInterruptsReadoutAndJitterDoesNotRearmSameDrop() {
+        var channel = CueDelivery()
+        let side = LocalCue(kind: .turn, text: "请原地向左转约30度。", isAvoidanceTurn: true)
+        XCTAssertTrue(channel.take(.init(kind: .route, text: "右边有门牌。"), at: 0))
+        XCTAssertTrue(channel.take(side, at: 0.2))
+        XCTAssertFalse(channel.take(.init(kind: .route, text: "左边有标识。"), at: 0.3))
+        XCTAssertTrue(channel.take(.dropStop, at: 0.4, cause: "drop"))
+        XCTAssertTrue(channel.take(side, at: 2))
+        XCTAssertFalse(channel.take(.dropStop, at: 2.1, cause: "drop"))
+        XCTAssertTrue(channel.take(.obstacleStop, at: 2.2, cause: "person"))
+    }
+
     func testPostedRestrictionTracksTheObservedSignAndRequiresDistinctCaptures() throws {
         let world = UUID()
         func pose(_ frame: Int, _ t: Double, yaw: Double = 0, x: Double = 0, version: Int = 1) -> FramePose {

@@ -87,6 +87,14 @@ import Foundation
             guard item.kind == .sign, let id else { return nil }; return (item,id)
         }
         accessNotices.observe(key.pose, signs: signs, printedRestriction: printedRestriction)
+        // A clear inscription is a fact on the first capture. Route changes and arrival
+        // still require the separate voting and confirmation gates below the camera adapter.
+        let readable = signs.filter { item, _ in
+            guard item.confidence >= 0.78, let label = item.label else { return false }
+            return WayfindingParser.sameInscription(label, route.searchTarget.text)
+        }
+        if readable.count == 1, !printedRestriction { focusedSign = readable[0].1 }
+
         var fresh=false
         for (s,id) in zip(key.features,ids) where s.kind == .door || s.kind == .sign {
             if let id, knownIDs.insert(id).inserted { fresh=true }
@@ -108,7 +116,15 @@ import Foundation
         let sel=Selection(key:key,reason:trigger,ticket:.init(pose:key.pose,generation:gen,destination:route.searchTarget.text),signs:signs)
         lastScene=key.sceneSignature
         firstUpload=false; reason=nil; lastOfferAt=live.time
-        if let first=uploads.offer(sel) { send(first) }
+        if let first=uploads.offer(sel) { send(first); return }
+        #if DEBUG && targetEnvironment(simulator)
+        // Let a phased loopback replay release its in-flight HTTP reply only after a new
+        // camera measurement has actually reached the pending upload slot.
+        if let phase = ProcessInfo.processInfo.environment["PATHSENSE_TEST_PHASE"] {
+            let name = "\(phase).queued.\(Int(key.pose.heading.rounded()))" as CFString
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName(rawValue: name), nil, nil, true)
+        }
+        #endif
     }
     private func send(_ sel:Selection) {
         let key=sel.key
@@ -134,7 +150,7 @@ import Foundation
                 self.accept(reply, for:sel, at:receipt)
             } catch {
                 guard !Task.isCancelled, !self.stopped else {return}
-                self.status("云端暂不可用。本机仍可读牌、寻找门和提醒停步。")
+                self.status("云端暂不可用。本机继续读牌、避障和引导近处过道。")
                 self.nextUploadAt=(self.nav.current?.time ?? 0)+4; self.reason="reconnect"; self.uploads=LatestOnly(); return
             }
             if !Task.isCancelled { self.drain() }
@@ -208,7 +224,7 @@ import Foundation
         return useSign(at:p) || (saidSign?.0 == sign.id && delivery.last?.text == saidSign?.1)
     }
     @discardableResult private func useSign(at p:FramePose) -> Bool {
-        guard !nav.emergency, p.normal, !holdingForAccess, let id=focusedSign, let sign=nav.record(id),
+        guard !nav.emergency, !delivery.turnHasPriority(at: p.time), p.normal, !holdingForAccess, let id=focusedSign, let sign=nav.record(id),
               let words=sign.signReadout(at:p,target:route.searchTarget.text) else {return false}
         let reobserve=sign.bearing(at:p) == nil
         guard saidSign?.0 != id || saidSign?.1 != words || reobserve != needReobserve else {return false}
@@ -228,6 +244,7 @@ import Foundation
     }
     private func render(manual:Bool=false) {
         guard !stopped, let p=nav.current else {return}
+        nav.verifyingRoute = route.action == .atDestination || route.stage == .landing || !route.choices.isEmpty
         let restricted = accessNotices.blocks(p, in: nav.book)
         if restricted && !holdingForAccess {
             nav.invalidate(); markGeneration(p.time)
@@ -259,6 +276,10 @@ import Foundation
             deliver(next,at:p.time)
             return
         }
+        if let next, next.isAvoidanceTurn {
+            deliver(next, at: p.time)
+            return
+        }
         if let id=focusedSign, let record=nav.record(id),
            (record.last.time+12 >= p.time || record.bearing(at:p) == nil), useSign(at:p) { return }
         guard var cue=next else {return}
@@ -270,6 +291,7 @@ import Foundation
     }
     @discardableResult private func deliver(_ cue:LocalCue,at t:Double,cause:String="obstacle",revoke:Bool=false) -> Bool {
         guard delivery.take(cue,at:t,cause:cause,revoke:revoke) else {return false}
+        nav.didDeliver(cue)
         if cue.isEmergency {
             stopUtterance=cue.text
             measures.hazard(at:cause == "restriction" ? t : nav.near?.pose.time ?? t)

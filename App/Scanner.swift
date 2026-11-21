@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor final class Scanner: ObservableObject {
     #if DEBUG && !targetEnvironment(simulator)
     let diagnostics=DeviceDiagnostics()
+    var dictationMetrics: DestinationMicrophone.Diagnostics { microphone.diagnostics }
     #endif
     let camera = SignCamera()
     let feedback = Feedback()
@@ -27,10 +28,12 @@ import SwiftUI
         return "后置相机 · 持续扫描中"
     }
     var canGuide: Bool { journey != nil && journey?.stage != .arrived && capture == .ready && !isPaused }
-    @Published private(set) var listening = false
+    enum DictationPhase { case idle, preparing, listening, finishing }
+    @Published private(set) var dictationPhase: DictationPhase = .idle
+    var listening: Bool { dictationPhase != .idle }
     @Published private(set) var cloudEnabled = false
     @Published var proxyAddress = ""
-    @Published private(set) var networkNote = "仅本机 · 可读牌、寻找门和提醒停步"
+    @Published private(set) var networkNote = "仅本机 · 可读牌、避障和引导近处过道"
     @Published private(set) var lastSpatialCue: CueKind?
     @Published private(set) var canCheckDoor = false
     @Published private(set) var metricsText = ""
@@ -41,21 +44,46 @@ import SwiftUI
     private var utterance = "", manual = false
 
     func dictate() {
-        if listening { microphone.finish(); return }
-        if journey != nil { end() }
-        feedback.stop(); listening=true; validation=""; entry=""
-        microphone.start(partial: { [weak self] text in self?.entry=text }) { [weak self] text, error in
-            guard let self else { return }; self.listening=false
-            if let text { self.entry=text; self.begin() }
-            else { self.validation=error ?? "请重新说出目的地。"; self.feedback.deliver(self.validation,sound:self.sound,interrupt:true) }
+        switch dictationPhase {
+        case .preparing, .finishing: return
+        case .listening:
+            dictationPhase = .finishing
+            microphone.finish()
+            return
+        case .idle: break
         }
+        if journey != nil { end() }
+        feedback.stop()
+        dictationPhase = .preparing
+        validation = ""
+        entry = ""
+        microphone.start(ready: { [weak self] in
+            guard let self, self.dictationPhase == .preparing else { return }
+            self.dictationPhase = .listening
+        }, partial: { [weak self] text in self?.entry = text }) { [weak self] text, error in
+            guard let self else { return }
+            self.dictationPhase = .idle
+            if let text {
+                self.entry = text
+                self.begin()
+            } else {
+                self.validation = error ?? "请重新说出目的地。"
+                self.feedback.deliver(self.validation, sound: self.sound, interrupt: true)
+            }
+        }
+        #if DEBUG && !targetEnvironment(simulator)
+        diagnostics.observeManualDictation(self)
+        #endif
     }
-    func cancelDictation() { microphone.cancel(); listening=false }
+    func cancelDictation() {
+        microphone.cancel()
+        dictationPhase = .idle
+    }
     func configureCloud(enable: Bool) {
         if enable && CloudClient.endpoint(proxyAddress)==nil { networkNote="请输入演示 Mac 显示的完整配对地址。"; return }
         if journey != nil && !isPaused && journey?.stage != .arrived { stopCapture(); isPaused=true; message="配置已更新，点继续重新观察。"; spokenMessage=message }
         cloudEnabled=enable
-        networkNote=enable ? "云端视觉已启用，等待首次关键帧。" : "仅本机 · 可读牌、寻找门和提醒停步"
+        networkNote=enable ? "云端视觉已启用，等待首次关键帧。" : "仅本机 · 可读牌、避障和引导近处过道"
     }
     func loadPrior(_ url:URL) {
         let access=url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -76,6 +104,9 @@ import SwiftUI
     }
     private func spatial(_ cue:LocalCue) {
         guard canGuide else {return}; lastSpatialCue=cue.kind; canCheckDoor=live?.canManuallyVerifyDoor ?? false
+        #if DEBUG && !targetEnvironment(simulator)
+        diagnostics.observeCue(cue, hazard: live?.nav.frontHazard)
+        #endif
         if cue.kind == .arrived, var route=journey { rememberMeasures(); route.finishedDoor(manual:manual); apply(route); return }
         if cue.kind == .aligned {
             feedback.deliver("",sound:false,haptic:.alignment); return
@@ -230,7 +261,7 @@ import SwiftUI
         let endpoint=cloudEnabled ? CloudClient.endpoint(proxyAddress):nil
         live=LiveNavigation(route:route,utterance:utterance,endpoint:endpoint,prior:prior,camera:camera,previousMeasures:routeMeasures,isSpeaking:{ [weak self] text in self?.feedback.isSpeaking(text) == true },output:{ [weak self] cue in self?.spatial(cue) },status:{ [weak self] note in
             guard let self, self.networkNote != note else {return}; self.networkNote=note
-            if note.hasPrefix("云端暂不可用"), self.lastSpatialCue != .stop { self.feedback.deliver("云端暂不可用，本机仍在扫描。",sound:self.sound) }
+            // Network availability is informational. Do not enqueue it on the movement or stop voice channel.
         })
         feedback.onSpeech={ [weak self] text,time,ended in self?.live?.speech(text,time:time,ended:ended) }
         camera.start(id: id, target: target, cloud: endpoint != nil) { [weak self] event in

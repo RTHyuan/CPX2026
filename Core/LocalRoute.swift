@@ -22,9 +22,16 @@ struct NearField {
     var sectors: [Sector]
     var hazards: [Sighting]
     var reason: String? = nil
+    var hasDepthMap = false, hasConfidenceMap = false
+    /// Exposure and tracking allow a holding-angle hint even when LiDAR has no usable returns.
+    var canCoachFraming = false
     var best: Int? { best(toward: 0) }
-    func best(toward angle: Double) -> Int? {
-        sectors.filter { $0.state == .free }.min { abs(Double($0.angle)-angle)+abs(Double($0.angle))*0.12 < abs(Double($1.angle)-angle)+abs(Double($1.angle))*0.12 }?.angle
+    func best(toward angle: Double, among allowed: Set<Int>? = nil) -> Int? {
+        let available = sectors.filter { $0.state == .free && (allowed?.contains($0.angle) ?? true) }
+        func cost(_ sector: Sector) -> Double {
+            abs(turnAngle(Double(sector.angle) - angle)) + abs(Double(sector.angle)) * 0.12
+        }
+        return available.min { (cost($0), $0.angle) < (cost($1), $1.angle) }?.angle
     }
     var front: CellState { sectors.first { $0.angle == 0 }?.state ?? .unknown }
 }
@@ -127,12 +134,17 @@ struct Alignment {
 enum CueKind: Equatable { case wait, scan, turn, face, aligned, advance, stop, found, arrived, route }
 struct LocalCue: Equatable {
     var kind: CueKind, text: String
+    var isAvoidanceTurn = false
     var isEmergency: Bool { kind == .stop }
     static let lookAround = Self(kind: .scan, text: "请慢慢环顾四周。")
     static let noConfirmedAisle = Self(kind: .wait, text: "暂时没找到可以确认的过道，请先站定。")
     static let revokeAdvance = Self(kind: .wait, text: "请先停步，重新确认前方通道。")
-    static let dropStop = Self(kind: .stop, text: "请停步，前方可能有下行台阶。")
+    static let dropStop = Self(kind: .stop, text: "请停步，前方可能有下行台阶。留在原地，向两侧扫找平坦过道。")
     static let obstacleStop = Self(kind: .stop, text: "先停一下。")
+    static let tiltDown = Self(kind: .scan, text: "要查看过道，请把手机朝前，向下倾约三十度。")
+    static let liftPhone = Self(kind: .scan, text: "请把手机稍微抬起，让前方过道也入镜。")
+    static let scanSideGround = Self(kind: .scan, text: "还没看清过道。保持这个角度，把手机慢慢转向两侧。")
+    var isFramingHint: Bool { self == .tiltDown || self == .liftPhone || self == .scanSideGround }
 }
 enum FrontHazard: String { case drop, person, obstacle }
 struct DecisionTicket {
@@ -148,6 +160,7 @@ struct SpatialNavigator {
     var canManuallyVerifyDoor: Bool { doorTarget && !emergency && current?.normal == true && door.map(doorsSeen.contains) == true }
     mutating func nearLost() {
         near = nil
+        framing = nil
         proofHistory.removeAll()
         confirmedAngles.removeAll()
         clearAlignment()
@@ -157,13 +170,15 @@ struct SpatialNavigator {
     private(set) var doorsSeen = Set<Int>(), arrived = false, lastHazardAt: Double?
     private var aligned = Alignment(), bodyHeading: Double?, lastStation: V3?
     private var announcedDoor = false, lastNearTime = -Double.infinity
+    private var framing: (hint: LocalCue, since: Double)?
     private var proofHistory: [NearField] = [], confirmedAngles: Set<Int> = []
     private var drops = LocalDrops(), blockedSince: Double?, blockedKind: FrontHazard?
     private var stopOffered = false, advanceOffered = false
-    private var relookHeading: Double?
     private var generationOrigin: V3?
     private var desiredHeading: Double?, aimOrigin: V3?, selectedAt = 0.0
+    // A planner may ask to see more. Its wording is only eligible during a local search.
     var cloudHold: LocalCue?, cloudHoldUntil = 0.0
+    var verifyingRoute = false
     var lastInstruction = ""
     var doorTarget: Bool
     init(doorTarget: Bool) { self.doorTarget=doorTarget }
@@ -183,7 +198,7 @@ struct SpatialNavigator {
         return !drops.blocks(p)
     }
     /// Floor clearance and the user's confirmation are separate; moving cues require both.
-    var canAdvance: Bool { hasFrontProof && aligned.latched && bodyHeading != nil }
+    var canAdvance: Bool { !verifyingRoute && hasFrontProof && aligned.latched && bodyHeading != nil }
     var frontHazard: FrontHazard? {
         guard let p = current, p.normal else { return nil }
         let observed = near.flatMap { fresh($0, p) && $0.visible ? $0 : nil }
@@ -198,11 +213,14 @@ struct SpatialNavigator {
         scan.exhausted || (scan.exhaustionReported && confirmedAngles.isEmpty)
     }
     private func bypassAngle(for hazard: FrontHazard, forwardOutstanding: Bool) -> Int? {
-        guard stopOffered, !forwardOutstanding, !arrived, hazard != .person,
-              let p = current, let since = blockedSince, p.time - since > 1.25,
-              let n = near, fresh(n, p), !n.hazards.contains(where: { $0.kind == .person }) else { return nil }
-        return confirmedAngles.filter { $0 != 0 && !drops.blocks(p, angle: Double($0)) }
-            .min { (abs($0), $0) < (abs($1), $1) }
+        guard !arrived, !verifyingRoute, hazard != .person, let p = current, let since = blockedSince,
+              let field = near, fresh(field, p) else { return nil }
+        // A measured object beyond the close zone can be steered around before an
+        // advance is issued. A moving user, person, drop or unmeasured object gets the stop first.
+        let distantObject = hazard == .obstacle && field.sectors.first(where: { $0.angle == 0 })?.nearest.map { $0 > 1.5 } == true
+        guard !forwardOutstanding && (distantObject || (stopOffered && p.time - since > 1.25)) else { return nil }
+        let routeBearing = record(waypoint)?.bearing(at: p) ?? record(door)?.bearing(at: p) ?? 0
+        return field.best(toward: routeBearing, among: confirmedAngles.filter { $0 != 0 && !drops.blocks(p, angle: Double($0)) })
     }
     private func fresh(_ n: NearField, _ p: FramePose) -> Bool {
         p.normal && n.pose.normal && p.id.sameWorld(n.pose.id) && (0...0.55).contains(p.time-n.pose.time) &&
@@ -273,6 +291,10 @@ struct SpatialNavigator {
             }
         }
         near = n
+        if n.canCoachFraming, n.reason != nil || n.best == nil {
+            let hint: LocalCue = n.pose.pitchDown < 14 ? .tiltDown : n.pose.pitchDown > 55 ? .liftPhone : .scanSideGround
+            if framing?.hint != hint { framing = (hint, n.pose.time) }
+        } else { framing = nil }
         // Three reprocessings of a capture, or three arrivals spread across a stale window,
         // cannot certify a walking strip. Keep the newest result for a repeated capture.
         proofHistory.removeAll { prior in
@@ -296,7 +318,6 @@ struct SpatialNavigator {
         updateHazard(at: p.time)
     }
     mutating func recheck() {
-        relookHeading = nil
         scan = ScanCoverage() // An explicit recheck opens another sweep at the same station.
         invalidate()
         nearLost()
@@ -323,7 +344,9 @@ struct SpatialNavigator {
                 if let id { used.insert(id) }
                 return id
             }
-            guard live.time-p.time < 8 else { return nil }
+            // Cold OCR can take longer than a motion decision. Keep its capture-bound
+            // inscription for recall, while moving objects and route targets still expire.
+            guard (local && item.kind == .sign) || live.time-p.time < 8 else { return nil }
             if !local {
                 let (u,v) = item.box.center
                 let matches = book.records.filter { r in r.kind == item.kind && r.last.id == p.id && !used.contains(r.id) && abs(r.box.center.0-u)<0.10 && abs(r.box.center.1-v)<0.13 }
@@ -349,7 +372,7 @@ struct SpatialNavigator {
                 }.sorted { $0.1 < $1.1 }
                 door = ranked.first?.0
             }
-            if door != nil { relookHeading=nil; if scan.exhausted {scan.retry()} }
+            if door != nil && scan.exhausted { scan.retry() }
         }
         return ids
     }
@@ -365,6 +388,19 @@ struct SpatialNavigator {
     func record(_ id: Int?) -> Landmark? {
         guard let id else { return nil }; return id < 0 ? cloudBook.records.first { $0.id == -id } : book.records.first { $0.id == id }
     }
+    /// A rejected proposal is eligible again on the next frame that still sees this door.
+    mutating func didDeliver(_ cue: LocalCue) {
+        if cue.kind == .found { announcedDoor = true }
+    }
+
+    private func framingHint(at p: FramePose) -> LocalCue? {
+        guard !verifyingRoute, let framing, p.time - framing.since >= 1.6 else { return nil }
+        let reading = book.records.contains { sign in
+            sign.kind == .sign && (0...2).contains(p.time - sign.last.time) &&
+                p.position.groundDistance(sign.last.position) < 0.38 && p.sameView(as: sign.last, within: 15)
+        }
+        return reading ? nil : framing.hint
+    }
     mutating func cue(forwardOutstanding: Bool? = nil) -> LocalCue? {
         guard let p = current else { return nil }
         let outstanding = forwardOutstanding ?? advanceOffered
@@ -374,7 +410,7 @@ struct SpatialNavigator {
                 desiredHeading = p.heading + Double(side)
                 aimOrigin = p.position
                 selectedAt = p.time
-                return .init(kind: .turn, text: "请原地" + turnText(Double(side)))
+                return .init(kind: .turn, text: "请原地" + turnText(Double(side)), isAvoidanceTurn: true)
             }
             stopOffered = true
             return hazard == .drop ? .dropStop : .obstacleStop
@@ -385,32 +421,32 @@ struct SpatialNavigator {
             return .revokeAdvance
         }
         if arrived { return .init(kind:.arrived,text:"已到教室门口，请停下。") }
-        guard var n = near, fresh(n, p), n.visible else {
-            return waitingAtScannedStation ? scan.takeExhaustionNotice() : .lookAround
-        }
+        let field = near.flatMap { fresh($0, p) ? $0 : nil }
         let target=record(door), chosen=record(waypoint)
-        if doorTarget, let target, doorsSeen.contains(target.id), let point=target.point,
+        if field?.visible == true, doorTarget, let target, doorsSeen.contains(target.id), let point=target.point,
            p.time-target.last.time < 0.8, target.count >= 3, target.box.bottom > 0.58,
            target.box.bottom-target.box.top > 0.43, abs(target.bearing(at:p) ?? 180) < 18,
            p.position.groundDistance(point) < 1.15, target.first.position.groundDistance(point)-p.position.groundDistance(point) > 0.40 {
             arrived=true; return .init(kind:.arrived,text:"已到教室门口，请停下。")
         }
         if let notice = scan.takeExhaustionNotice() { return notice }
-        if doorTarget, let target, doorsSeen.contains(target.id), !announcedDoor, p.time-target.last.time < 1.4 {
-            announcedDoor = true
+        if doorTarget, !announcedDoor, let target, doorsSeen.contains(target.id), p.normal,
+           (0..<1.4).contains(p.time - target.last.time), p.sameView(as: target.last, within: 15),
+           p.position.groundDistance(target.last.position) <= 0.23 {
             return .init(kind: .found, text: "找到门了。")
         }
-        if waitingAtScannedStation { return nil }
+        if waitingAtScannedStation || verifyingRoute { return nil }
+        guard var n = field, n.visible else { return framingHint(at: p) ?? .lookAround }
         let avoidingDrop = drops.nearby(at: p)
         if avoidingDrop {
             for i in n.sectors.indices where n.sectors[i].state == .free && !confirmedAngles.contains(n.sectors[i].angle) {
                 n.sectors[i].state = .unknown
             }
         }
-        guard n.reason == nil, n.best != nil else { return .lookAround }
-        if let hold=cloudHold, p.time < cloudHoldUntil { return hold }
-        guard doorTarget || chosen != nil || priorWaypoint != nil else {
-            return hasFrontProof ? nil : .lookAround
+        guard n.reason == nil, n.best != nil else {
+            if let hint = framingHint(at: p) { return hint }
+            if p.time < cloudHoldUntil, let cloudHold, cloudHold.kind == .scan { return cloudHold }
+            return .lookAround
         }
         let bearing = chosen?.bearing(at:p) ?? target?.bearing(at:p) ?? priorWaypoint.map { turnAngle(($0-p.position).heading-p.heading) }
         let goal = bearing.flatMap { drops.blocks(p, angle: $0) ? nil : $0 }
@@ -418,22 +454,23 @@ struct SpatialNavigator {
         if let start=aimOrigin, start.groundDistance(p.position) > 0.8 || p.time-selectedAt > 10 {
             desiredHeading=nil; aimOrigin=nil
             if chosen?.kind == .aisle_entrance { waypoint=nil }
-            if goal == nil { bodyHeading=nil; relookHeading=p.heading }
         }
-        if let previous = relookHeading, goal == nil {
-            guard abs(turnAngle(previous-p.heading)) >= 36, n.best != nil else {
-                return .lookAround
-            }
-            relookHeading=nil
-        }
-        // Reserve an observed side aisle before aiming at a door behind rows of furniture.
+        // Route bearings choose what to inspect. A reachable side strip takes precedence
+        // over a stale straight-ahead aim, even before the planner identifies a landmark.
+        let preference = goal ?? desiredHeading.map { turnAngle($0 - p.heading) } ?? 0
+        let best = n.best(toward: preference)
+        let needsSide = n.front != .free || avoidingDrop
         var angle: Double?
-        if avoidingDrop { angle = n.best(toward: goal ?? 0).map(Double.init) }
-        else if let goal, abs(goal) > 43 { angle=goal }
-        else if let best=n.best(toward:goal ?? 0), let goal, abs(Double(best)-goal) <= 15 { angle=goal }
-        else if let remembered=desiredHeading { angle=turnAngle(remembered-p.heading) }
-        else if let best=n.best(toward:goal ?? 0) { angle=Double(best); desiredHeading=p.heading+Double(best); aimOrigin=p.position; selectedAt=p.time }
-        if target != nil && target?.bearing(at:p) == nil && chosen == nil && n.best == 0 {
+        if needsSide, let best { angle = Double(best) }
+        else if let goal, abs(goal) > 43 { angle = goal } // turn in place to reacquire a landmark
+        else if let goal, let best, abs(Double(best) - goal) <= 15 { angle = goal }
+        else if let best { angle = Double(best) }
+        if let angle, goal == nil || needsSide, desiredHeading == nil || needsSide {
+            desiredHeading = p.heading + angle
+            aimOrigin = p.position
+            selectedAt = p.time
+        }
+        if !needsSide && target != nil && target?.bearing(at:p) == nil && chosen == nil && n.best == 0 {
             return .init(kind:.scan,text:"请把镜头转向门框。")
         }
         guard let angle else { return .lookAround }
@@ -441,13 +478,13 @@ struct SpatialNavigator {
             if bodyHeading != nil { clearAlignment() }
             _ = aligned.sample(error: angle, time: p.time)
             if outstanding { advanceOffered = false; return .revokeAdvance }
-            return .init(kind: .turn, text: (avoidingDrop ? "请原地" : "") + turnText(angle))
+            return .init(kind: .turn, text: (needsSide ? "请原地" : "") + turnText(angle), isAvoidanceTurn: needsSide)
         }
         let justAligned = aligned.sample(error: angle, time: p.time)
         guard hasFrontProof else { return .lookAround }
         if justAligned { return .init(kind: .aligned, text: "方向已对准。") }
         guard aligned.latched else { return .init(kind: .wait, text: "保持手机朝向前方。") }
-        guard canAdvance else { return .init(kind: .face, text: "请让手机朝向身体前方，确认后再移动。") }
+        guard canAdvance else { return .init(kind: .face, text: "已看清前方这段过道。请让手机朝向身体前方，再点“手机已朝向身体前方”。") }
         advanceOffered = true
         return .init(kind:.advance,text:"沿眼前过道慢行一小段。")
     }

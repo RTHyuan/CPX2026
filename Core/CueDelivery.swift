@@ -8,8 +8,12 @@ struct CueDelivery {
     private var lastAt = -Double.infinity
     private var ambientAt = -Double.infinity
     private var holdUntil = -Double.infinity
+    private var lastAvoidanceTurn: LocalCue?
     private var spokenDangers = Set<String>()
     private var clearSince: Double?
+
+    /// Give the direction enough airtime to be understood before reading a sign.
+    func turnHasPriority(at t: Double) -> Bool { last?.isAvoidanceTurn == true && t - lastAt < 1.8 }
 
     mutating func sampled(at t: Double, dangerPresent: Bool, frontProven: Bool) {
         if dangerPresent { clearSince = nil; return }
@@ -22,7 +26,7 @@ struct CueDelivery {
             // A person and an unclassified object use the same immediate stop. Fluctuating
             // labels must not restart those words while the person is already stopped.
             let episode = cause == "person" ? "obstacle" : cause
-            guard !spokenDangers.contains(episode) || forwardOutstanding || last?.kind != .stop else { return false }
+            guard !spokenDangers.contains(episode) || forwardOutstanding || (cause == "person" && last?.isAvoidanceTurn == true) else { return false }
             spokenDangers.insert(episode)
             clearSince = nil
             forwardOutstanding = false
@@ -36,16 +40,20 @@ struct CueDelivery {
             case .arrived: forwardOutstanding = false
             case .aligned: break // The one-shot alignment pulse is silent and can coincide with reading.
             case .route, .found:
-                if last?.kind == .stop && t < holdUntil { return false }
+                if (last?.kind == .stop && t < holdUntil) || turnHasPriority(at: t) { return false }
                 holdUntil = t + 3.2
             case .wait, .scan:
                 // The navigator offers the end of a completed sweep exactly once per station.
                 if cue != .noConfirmedAisle {
-                    guard t >= holdUntil, t - ambientAt >= 8 else { return false }
+                    let adjustment = cue.isFramingHint && (last == .lookAround || last?.isFramingHint == true)
+                    guard t >= holdUntil, adjustment || t - ambientAt >= 8 else { return false }
                 }
                 ambientAt = t
             case .turn:
-                guard t >= holdUntil, last?.kind != .turn || t-lastAt >= 0.75 else { return false }
+                let cutsIn = cue.isAvoidanceTurn && (last?.kind == .route || (last?.kind == .found && cue != lastAvoidanceTurn))
+                guard (t >= holdUntil || cutsIn), last?.kind != .turn || t-lastAt >= 0.75 else { return false }
+                if cutsIn { holdUntil = t }
+                if cue.isAvoidanceTurn { lastAvoidanceTurn = cue }
             default:
                 guard t >= holdUntil else { return false }
             }

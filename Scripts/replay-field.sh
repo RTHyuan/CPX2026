@@ -13,12 +13,14 @@ mkdir -p "$result_dir"
 selectors=()
 for test in testDoorDetourReacquisitionFromHomeThroughArrival testSpatialStopInterruptsShortStepAndPauseClearsIt \
     testConsentAndDelayedProxyTurnUsesLatestCameraHeading testFieldPublicAreaRaisedPhoneReadsPlateAndPersonPreempts \
-    testFieldMockRelayRemembersElevatorPictogram testFieldStaffOnlySignWithUnknownGround testFieldDoorDetourReacquisitionThroughArrival; do
+    testFieldMockRelayRemembersElevatorPictogram testFieldStaffOnlySignWithUnknownGround testFieldDoorDetourReacquisitionThroughArrival \
+    testFieldRoomTurnsToLocalSideAisleWithoutCloudTarget testFieldMeasuredDropRightTurnBodyConfirmationAndPersonStop \
+    testFieldPhoneTiltThenLeftAisleAndFrontConfirmation; do
     selectors+=("-only-testing:PathSenseUITests/PathSenseUITests/$test")
 done
 build_status=0
 xcodebuild -project PathSense.xcodeproj -scheme PathSense -configuration Debug \
-    -destination "platform=iOS Simulator,id=$1" -parallel-testing-enabled NO \
+    -destination "platform=iOS Simulator,id=$1" -parallel-testing-enabled NO -jobs 2 \
     -derivedDataPath .build-local/field-feedback/replay-build -resultBundlePath "$result_dir/tests.xcresult" \
     "${selectors[@]}" CODE_SIGNING_ALLOWED=NO test > "$result_dir/build.log" 2>&1 || build_status=$?
 if [[ -d "$result_dir/tests.xcresult" ]]; then

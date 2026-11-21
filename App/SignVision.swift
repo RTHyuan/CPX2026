@@ -12,6 +12,7 @@ final class SignVision: @unchecked Sendable {
     }
 
     func wayfinding(_ handler: VNImageRequestHandler, target: Destination, image: CIImage) throws -> FrameResult {
+        if case .room = target, let mention = roomMention(handler, image: image, target: target) { return mention }
         let primary = try strings(handler, languages: ["zh-Hans", "en-US"])
         var text = primary
         if primary.contains(where: { $0.confidence < 0.65 }) {
@@ -43,6 +44,29 @@ final class SignVision: @unchecked Sendable {
         return result
     }
 
+    /// A room plaque may print the identifier twice. Check both rows with two different
+    /// recognizers before returning a stationary mention. All route decisions, graphics,
+    /// restrictions and uncertain layouts still take the full multilingual path.
+    private func roomMention(_ handler: VNImageRequestHandler, image: CIImage, target: Destination) -> FrameResult? {
+        guard let fast = try? strings(handler, languages: ["en-US"], level: .fast),
+              let pair = WayfindingParser.printedRoomPair(in: fast),
+              WayfindingParser.sameInscription(pair.number.text, target.text) else { return nil }
+        let scale = min(1, 720 / max(image.extent.width, image.extent.height))
+        let overview = image.transformed(by: .init(scaleX: scale, y: scale))
+        guard let bitmap = RouteVision.renderer.createCGImage(overview, from: overview.extent.integral),
+              let bilingual = try? strings(VNImageRequestHandler(cgImage: bitmap), languages: ["zh-Hans", "en-US"]),
+              let checked = WayfindingParser.printedRoomPair(in: bilingual),
+              WayfindingParser.sameInscription(checked.number.text, pair.number.text),
+              checked.number.bounds.contains(CGPoint(x: pair.number.bounds.midX, y: pair.number.bounds.midY)),
+              checked.caption.bounds.contains(CGPoint(x: pair.caption.bounds.midX, y: pair.caption.bounds.midY)),
+              RouteVision.arrows(image).isEmpty else { return nil }
+        let result = classify(Self.consensus([bilingual, fast]), target: target)
+        var mention = WayfindingSigns()
+        mention.target = .mention
+        guard WayfindingParser.read(result, for: target) == mention else { return nil }
+        return result
+    }
+
     private func corroborateLabels(_ lines: [SignLine], beside icons: [SignLine], using handler: VNImageRequestHandler) -> [SignLine] {
         let glyphs = CharacterSet(charactersIn: "←→↑↓↖↗↙↘⬅➡⬆⬇⇦⇨⇧⇩ ")
         var result = lines
@@ -59,7 +83,7 @@ final class SignVision: @unchecked Sendable {
                 let languages = label.unicodeScalars.allSatisfy(\.isASCII) ? ["en-US"] : ["zh-Hans", "en-US"]
                 guard !region.isEmpty, let words = try? strings(handler, languages: languages, region: region),
                       words.contains(where: { SignParser.normalize($0.text) == label }) else { continue }
-                result[i] = SignLine(label, confidence: 0.78, bounds: region)
+                result[i] = SignLine(label, confidence: Float(SignLine.corroboratedConfidence), bounds: region)
                 break
             }
         }
@@ -87,7 +111,7 @@ final class SignVision: @unchecked Sendable {
                     .sorted { $0.bounds.minX < $1.bounds.minX }
                 return key(sameArea.map(\.text).joined()) == spelling
             }
-            return SignLine(item.text, confidence: repeated ? max(0.78, item.confidence) : item.confidence, bounds: item.bounds)
+            return SignLine(item.text, confidence: repeated ? max(Float(SignLine.corroboratedConfidence), item.confidence) : item.confidence, bounds: item.bounds)
         }.sorted { lhs, rhs in
             if (lhs.confidence >= 0.65) != (rhs.confidence >= 0.65) { return lhs.confidence >= 0.65 }
             return lhs.bounds.width * lhs.bounds.height > rhs.bounds.width * rhs.bounds.height
@@ -99,10 +123,10 @@ final class SignVision: @unchecked Sendable {
     func classify(_ lines: [SignLine], target: Destination) -> FrameResult {
         FrameResult(lines: lines, reading: SignParser.analyze(lines, for: target))
     }
-    func strings(_ handler: VNImageRequestHandler, languages: [String], correcting: Bool = false, region: CGRect? = nil) throws -> [SignLine] {
+    func strings(_ handler: VNImageRequestHandler, languages: [String], correcting: Bool = false, region: CGRect? = nil, level: VNRequestTextRecognitionLevel = .accurate) throws -> [SignLine] {
         let request = VNRecognizeTextRequest()
         if let region { request.regionOfInterest = region }
-        request.recognitionLevel = .accurate
+        request.recognitionLevel = level
         request.usesLanguageCorrection = correcting
         let supported = (try? request.supportedRecognitionLanguages()) ?? []
         let preferred = languages.filter(supported.contains)
