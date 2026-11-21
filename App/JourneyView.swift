@@ -6,13 +6,14 @@ struct JourneyCard: View {
     private var heading: (String, String) {
         if route.stage == .arrived { return (route.stage.rawValue, route.stage.icon) }
         if scanner.isPaused { return ("已暂停", "pause.circle") }
-        if scanner.capture == .ready, route.target.isClassroomDoor, let cue=scanner.lastSpatialCue {
+        if scanner.capture == .ready, let cue=scanner.lastSpatialCue {
             switch cue {
             case .stop: return ("先停步", "hand.raised.fill")
             case .turn, .aligned, .face: return ("确认朝向", "arrow.triangle.turn.up.right.diamond")
             case .advance: return ("沿过道慢行", "figure.walk")
             case .found: return ("找到门了", "door.left.hand.open")
-            case .wait: return ("站定复核", "pause.circle")
+            case .wait: return ("查看周围", "viewfinder")
+            case .scan: return ("环顾四周", "viewfinder")
             default: break
             }
         }

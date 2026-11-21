@@ -80,7 +80,7 @@ import SwiftUI
         if cue.kind == .aligned {
             feedback.deliver("",sound:false,haptic:.alignment); return
         }
-        present(cue.text, haptic: cue.kind == .stop ? .emergency : nil, interrupt:true)
+        present(cue.text, speech: cue.kind == .route ? SignReading.spoken(cue.text) : cue.text, haptic: cue.kind == .stop ? .emergency : nil, interrupt:true)
     }
     private var sessionID = UUID()
     private var gate = RouteEvidenceGate(now: 0)
@@ -157,7 +157,7 @@ import SwiftUI
         }
     }
     func routeAction(_ action: WayfindingJourney.Action) {
-        guard canGuide, var route = journey, route.action == action else { return }
+        guard canGuide, live?.canConfirmEntrance != false, var route = journey, route.action == action else { return }
         route.confirm()
         apply(route)
     }
@@ -186,7 +186,10 @@ import SwiftUI
         expiry?.cancel()
         if route.stage == .arrived { live?.finishMeasures(manual:true); stopCapture() }
         journey = route; live?.updateRoute(route,userChanged:true)
-        if let live, live.nav.current != nil && !live.allowsSignDirections { if let cue=live.nav.cueForSafety { spatial(cue) }; return }
+        if let live, live.nav.current != nil {
+            let text = route.stage == .landing ? "已记录换层点。到达目标楼层后，请用手机查看楼层牌。" : route.cue
+            live.stationary(text); return
+        }
         present(route.cue, speech: route.prompt.speech, haptic: route.stage == .arrived ? .arrival : .guidance, interrupt: true)
     }
     private func present(_ text: String, speech: String? = nil, haptic: NavigationHaptic? = nil, interrupt: Bool = false) {
@@ -225,7 +228,7 @@ import SwiftUI
         camera.updateOrientation(UIDevice.current.orientation)
         let id = sessionID
         let endpoint=cloudEnabled ? CloudClient.endpoint(proxyAddress):nil
-        live=LiveNavigation(route:route,utterance:utterance,endpoint:endpoint,prior:prior,camera:camera,previousMeasures:routeMeasures,output:{ [weak self] cue in self?.spatial(cue) },status:{ [weak self] note in
+        live=LiveNavigation(route:route,utterance:utterance,endpoint:endpoint,prior:prior,camera:camera,previousMeasures:routeMeasures,isSpeaking:{ [weak self] text in self?.feedback.isSpeaking(text) == true },output:{ [weak self] cue in self?.spatial(cue) },status:{ [weak self] note in
             guard let self, self.networkNote != note else {return}; self.networkNote=note
             if note.hasPrefix("云端暂不可用"), self.lastSpatialCue != .stop { self.feedback.deliver("云端暂不可用，本机仍在扫描。",sound:self.sound) }
         })
@@ -260,11 +263,17 @@ import SwiftUI
             guard canGuide else {return}; live?.near(near)
         case .key(let key):
             guard canGuide, let current=camera.latestPose(), current.id.sameWorld(key.pose.id), key.pose.time >= acceptSince else {return}
-            if let signs=key.signs, target?.isClassroomDoor != true { consumeSigns(signs, at:key.pose.time, spatial:true) }
-            live?.observation(key)
+            let signs = key.signs.flatMap { frame in
+                journey.map { WayfindingParser.read(frame, for: $0.searchTarget, landmark: $0.site.landmark) }
+            }
+            if let signs { live?.observeReadout(signs, at:key.pose) }
+            live?.observation(key, printedRestriction: signs?.restricted == true)
+            if let signs, target?.isClassroomDoor != true { consumeSigns(signs, at:key.pose.time, capturePose:key.pose) }
             let check=live?.canManuallyVerifyDoor ?? false; if check != canCheckDoor {canCheckDoor=check}
         case .frame(let frame, let sampledAt):
-            consumeSigns(frame,at:sampledAt,spatial:false)
+            if let route = journey {
+                consumeSigns(WayfindingParser.read(frame, for: route.searchTarget, landmark: route.site.landmark), at:sampledAt)
+            }
         case .error(let reason):
             guard canGuide else { return }; clearEvidence()
             if message != reason { present(reason,haptic:.warning,interrupt:true) }
@@ -273,9 +282,9 @@ import SwiftUI
         #endif
         }
     }
-    private func consumeSigns(_ frame:FrameResult,at sampledAt:Double,spatial:Bool) {
+    private func consumeSigns(_ signs:WayfindingSigns,at sampledAt:Double,capturePose:FramePose?=nil) {
+            let spatial = capturePose != nil
             guard canGuide, sampledAt >= acceptSince, var route = journey else { return }
-            let signs = WayfindingParser.read(frame, for: route.searchTarget, landmark: route.site.landmark)
             if route.action == .atDestination {
                 if signs.target == .plate, !signs.restricted { armExpiry() }
                 else {
@@ -289,15 +298,33 @@ import SwiftUI
             journey = route; live?.updateRoute(route)
             if spatial {
                 if route.action == .atDestination { armExpiry() }
-                if lastSpatialCue == .stop || live?.nav.emergency == true { return }
-                let text: String
-                if signs.restricted {text="请停在当前位置，核对通行限制。"}
-                else if live?.allowsSignDirections == true {text=route.cue}
-                else if let floor=signs.currentLevel {text="楼层标识写着\(floor)。请站定核对。"}
-                else if signs.target == .plate {text="读到\(route.searchTarget.text)的独立门牌。请站定核对。"}
-                else if let id=signs.nearbyRoom {text="附近门牌写着\(id)。请站定核对。"}
-                else if signs.signboard {text="读到目录，请站定核对目标条目。"} else {return}
-                if message != text {present(text,speech: text == route.cue ? route.prompt.speech : SignReading.spoken(text),interrupt:signs.restricted)}
+                if signs.restricted { return } // The capture-bound access notice owns this announcement.
+                if let pose = capturePose { live?.observeReadout(signs, at:pose, confirmed:true) }
+                // Map storage happens on the first capture. The second agreeing reading advances the journey.
+                // Report the sign itself even when the camera is level or the current strip is unknown.
+                var room = signs.nearbyRoom
+                if signs.target == .plate { room = route.searchTarget.text }
+                if signs.target == .mention, case .room(let code) = route.searchTarget { room = code }
+                if let pose = capturePose, let room, live?.localSign(for:room, at:pose) == true { return }
+                let text:String
+                switch signs.target {
+                case .listed(let site):
+                    let floor=site.level.map { "，在" + Mandarin.floor($0) } ?? ""
+                    let arrow=site.arrow.map { "，牌上箭头向" + $0.words } ?? ""
+                    text="目录列有「\(route.searchTarget.text)」\(floor)\(arrow)。"
+                case .plate:
+                    text = route.action == .atDestination ? "读到「\(route.searchTarget.text)」的独立标牌，可核对是否到达。" : route.cue
+                case .ambiguous, .mention:
+                    text="这块牌提到「\(route.searchTarget.text)」。请移动手机，让对应的一行完整入镜。"
+                case nil:
+                    if let floor=signs.currentLevel { text="楼层牌写着\(Mandarin.floor(floor))。" }
+                    else if let room=signs.nearbyRoom { text="附近门牌写着\(room)，已记下。" }
+                    else if let transfer=signs.transfer { text="看到\(transfer)标识。" + (signs.transferArrow.map { "牌上箭头向\($0.words)。" } ?? "") }
+                    else if let arrow=signs.onward ?? signs.portalArrow { text="标牌的箭头向\(arrow.words)。" }
+                    else if signs.signboard { text="看到一张目录，请移动手机查看对应条目。" }
+                    else {return}
+                }
+                live?.stationary(text)
                 return
             }
             if route.action == .atDestination { armExpiry() }

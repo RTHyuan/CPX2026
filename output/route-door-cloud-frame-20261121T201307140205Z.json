@@ -1,0 +1,38 @@
+{
+  "photo": "route-door.jpg",
+  "model": "deepseek-flash",
+  "mode": "live",
+  "started_at_utc": "2026-11-21T20:13:07+00:00",
+  "elapsed_seconds": 7.595,
+  "timing_scope": "end-to-end CLI including JPEG preparation and relay",
+  "cli_exit_code": 0,
+  "strict_capture_frame_validation": {
+    "passed": true,
+    "reference": "context.capture.sample.id",
+    "fields": [
+      "session",
+      "world",
+      "frame"
+    ]
+  },
+  "redacted_result": {
+    "status": "ok",
+    "frame_match": true,
+    "action": "target_waypoint",
+    "uncertain": false,
+    "target_ref": "o1",
+    "observations": [
+      {
+        "ref": "o1",
+        "kind": "door",
+        "box": [
+          0.24,
+          0.11,
+          0.74,
+          0.84
+        ]
+      }
+    ],
+    "hazards": []
+  }
+}

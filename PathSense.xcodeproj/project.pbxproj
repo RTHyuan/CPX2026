@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1045D66459FA6568D264EEFD /* UITests/PathSenseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90D563818CF0CC4A750592F /* UITests/PathSenseUITests.swift */; };
 		356D42E61CCAD9A5D3748E48 /* Core/ScanGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */; };
+		763AC81D3311A5D17BB12A13 /* Core/CueDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCBE73E1465C77BAAF4E0B30 /* Core/CueDelivery.swift */; };
 		8A4B86C7E50B2CEB1C36C994 /* Core/PassageEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */; };
 		50CCBAC2F1777472B8DFC4E8 /* App/SimulatorEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */; };
 		71D3A6820F13286A4A78236D /* App/DeviceDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */; };
@@ -54,6 +55,7 @@
 		56CE2F1DE8E6AD6CE5936396 /* App/Resources/SignContext.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = App/Resources/SignContext.mlmodel; sourceTree = SOURCE_ROOT; };
 		6890FE5EDA0A77D8E9B12D36 /* PathSenseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PathSenseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ScanGate.swift; sourceTree = SOURCE_ROOT; };
+		BCBE73E1465C77BAAF4E0B30 /* Core/CueDelivery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/CueDelivery.swift; sourceTree = SOURCE_ROOT; };
 		C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/PassageEvidence.swift; sourceTree = SOURCE_ROOT; };
 		2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SimulatorEvidence.swift; sourceTree = SOURCE_ROOT; };
 		97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/DeviceDiagnostics.swift; sourceTree = SOURCE_ROOT; };
@@ -103,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */,
+				BCBE73E1465C77BAAF4E0B30 /* Core/CueDelivery.swift */,
 				C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */,
 				2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */,
 				97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */,
@@ -245,6 +248,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				356D42E61CCAD9A5D3748E48 /* Core/ScanGate.swift in Sources */,
+				763AC81D3311A5D17BB12A13 /* Core/CueDelivery.swift in Sources */,
 				8A4B86C7E50B2CEB1C36C994 /* Core/PassageEvidence.swift in Sources */,
 				50CCBAC2F1777472B8DFC4E8 /* App/SimulatorEvidence.swift in Sources */,
 				71D3A6820F13286A4A78236D /* App/DeviceDiagnostics.swift in Sources */,

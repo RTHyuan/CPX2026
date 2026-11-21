@@ -29,7 +29,7 @@ struct WayfindingJourney: Equatable {
         return .named(resolvedName)
     }
     var cue: String { prompt.text }
-    private(set) var prompt: GuidancePrompt = "请站定，慢慢把镜头转向四周，寻找门、入口或附近的导览牌。"
+    private(set) var prompt: GuidancePrompt = "慢慢转动手机，看看四周的门、入口或导览牌。"
     private(set) var history: [String] = []
     private(set) var action: Action?
     private var outsideRoom = false
@@ -171,7 +171,7 @@ struct WayfindingJourney: Equatable {
     private func direction(_ arrow: SignArrow) -> String { "箭头指向\(arrow.words)" }
     private var recovery: GuidancePrompt {
         switch stage {
-        case .survey, .doorway: return "请站定，慢慢转动手机寻找入口或门。如果已在公共区域，可以直接扫门牌或目录。"
+        case .survey, .doorway: return "请慢慢转动手机寻找入口或门。如果已在公共区域，可以直接扫门牌或目录。"
         case .orient, .directory: return "请环顾四周，寻找门旁的号码或入口导览牌，让要找的名称和楼层同时进入画面。"
         case .transfer: return "目标在\(site: site)。请站定扫描附近的换层指示，留意电梯的方向。"
         case .landing: return "到站后请扫描独立的楼层牌，核对是否到达\(site: site)。"
@@ -205,13 +205,13 @@ struct WayfindingJourney: Equatable {
     mutating func enteredPublicArea() {
         guard stage == .survey || stage == .doorway else { return }
         outsideRoom = true; action = nil; stage = .orient; log("已进入公共区域")
-        prompt = "请站定环顾四周，先扫刚经过的门牌，再找走廊方向牌或楼层目录。"
+        prompt = "已进入公共区域。转动手机，看看刚经过的门牌或走廊方向牌。"
     }
     mutating func relocalize() {
         guard stage != .arrived else { return }
         choices = []; resolvedName = nil; chosenSite = nil
         stage = .orient; currentLevel = nil; site = RouteSite(); latestRoom = nil; transferFacility = nil; action = nil
-        log("重新定位"); prompt = "请站定，重新扫描当前位置牌，再扫附近的目录。"
+        log("重新定位"); prompt = "请转动手机，看看当前位置牌和附近的目录。"
     }
     mutating func expireConfirmation() {
         let hadPrompt = action != nil || !choices.isEmpty
@@ -221,6 +221,19 @@ struct WayfindingJourney: Equatable {
         if hadPrompt { prompt = recovery }
     }
     private mutating func log(_ entry: String) { if history.last != entry { history = Array((history + [entry]).suffix(12)) } }
+}
+
+extension WayfindingSigns {
+    /// The text and its row determine a sign vote. Door detector boxes move by pixels
+    /// even when the same plaque stays in view. Keep scene-only votes for doorway searches.
+    var votingEvidence: Self {
+        var facts = self
+        facts.scene = SceneClues()
+        if facts != Self() { return facts }
+        facts.scene = scene
+        facts.scene.doorBoxes = []
+        return facts
+    }
 }
 
 /// Vote on structured route evidence, not the quick reader's verdict: two directories
@@ -233,6 +246,7 @@ struct RouteEvidenceGate {
     init(now: TimeInterval) { lastUseful = now }
     mutating func accept(_ signs: WayfindingSigns, at now: TimeInterval) -> Bool {
         guard now > lastTime else { return false }
+        let signs = signs.votingEvidence
         let repeated = candidate == signs && (0.1...3.5).contains(now - lastTime)
         candidate = signs
         lastTime = now

@@ -8,7 +8,37 @@ struct RouteSite: Equatable, Hashable {
     var arrow: SignArrow?
 }
 
-enum SignArrow: String, CaseIterable {
+enum SignSymbol: String, Codable, CaseIterable {
+    case room, elevator, exit, restroom, accessible, directory, clinic, shop, stairs, unknown
+}
+
+struct SignMeaning: Codable, Equatable {
+    var symbol: SignSymbol
+    var text: String? = nil
+    var arrow: SignArrow? = nil
+
+    /// Merge partial descriptions only when they came from the same exposure.
+    func agrees(with other: Self) -> Bool {
+        guard symbol == other.symbol || symbol == .unknown || other.symbol == .unknown,
+              arrow == nil || other.arrow == nil || arrow == other.arrow else { return false }
+        guard let text, let otherText = other.text else { return true }
+        return WayfindingParser.sameInscription(text, otherText)
+    }
+
+    func addingDetails(from other: Self) -> Self {
+        .init(symbol: symbol == .unknown ? other.symbol : symbol, text: text ?? other.text, arrow: arrow ?? other.arrow)
+    }
+
+    func agrees(withLocal inscription: String) -> Bool {
+        if let text, !WayfindingParser.compatibleInscription(inscription, text) { return false }
+        let rows = inscription.split(whereSeparator: \.isNewline)
+        guard rows.count == 1, let arrow else { return true }
+        let glyphs = SignArrow.allCases.filter { rows[0].contains($0.rawValue) }
+        return glyphs.isEmpty || glyphs == [arrow]
+    }
+}
+
+enum SignArrow: String, CaseIterable, Codable {
     case left = "←", right = "→", ahead = "↑", down = "↓", upperLeft = "↖", upperRight = "↗", lowerLeft = "↙", lowerRight = "↘"
     var words: String {
         switch self {
@@ -92,6 +122,9 @@ enum WayfindingParser {
         return regex.matches(in: text, range: NSRange(location: 0, length: ns.length)).map { ns.substring(with: $0.range) }
     }
     private static func has(_ pattern: String, _ text: String) -> Bool { text.range(of: pattern, options: .regularExpression) != nil }
+    static func isRestriction(_ inscription: String) -> Bool {
+        has(restrictedPattern, SignParser.normalize(inscription))
+    }
     private static func strip(_ pattern: String, _ text: String) -> String { text.replacingOccurrences(of: pattern, with: " ", options: .regularExpression) }
     private static func key(_ input: String) -> String { SignParser.normalize(input).filter { !$0.isWhitespace } }
     // Compare complete printed labels. A longer clinic or brand name cannot be
@@ -224,14 +257,18 @@ enum WayfindingParser {
         }
     }
     static func read(_ frame: FrameResult, for target: Destination, landmark: String? = nil) -> WayfindingSigns {
+        read(frame, for: target, landmark: landmark, directory: false)
+    }
+
+    private static func read(_ frame: FrameResult, for target: Destination, landmark: String?, directory: Bool) -> WayfindingSigns {
         let layout = rows(frame.lines)
         let ordered = layout.map(\.text)
-        let context = frame.lines.filter { $0.confidence >= 0.45 }.map { SignParser.normalize($0.text) }.joined(separator: " ")
+        let context = frame.lines.filter { $0.confidence >= 0.45 }.map(\.text).joined(separator: " ")
         var result = WayfindingSigns()
-        result.restricted = has(restrictedPattern, context)
+        result.restricted = isRestriction(context)
         let headings = ordered.filter { isFloorPlate($0) && !has(herePattern, $0) }
         let hasFloorGroups = Set(headings.flatMap(floorTokens)).count >= 2 && headings.count < ordered.count
-        result.signboard = has(boardPattern, context) || hasFloorGroups
+        result.signboard = directory || has(boardPattern, SignParser.normalize(context)) || hasFloorGroups
         let here = ordered.filter { has(herePattern, $0) }.flatMap { floorTokens($0) }
         // A floor heading on a directory describes entries. A standalone landing sign can update location.
         if Set(here).count == 1 { result.currentLevel = here.first }
@@ -313,5 +350,125 @@ enum WayfindingParser {
         if ["楼梯","樓梯","STAIRS","STAIRCASE"].contains(value) { return "楼梯" }
         if ["扶梯","自动扶梯","ESCALATOR","ESCALATORS"].contains(value) { return "扶梯" }
         return nil
+    }
+}
+
+extension Landmark {
+    /// Screen text. The speech layer applies SignReading.spoken to this string.
+    func signReadout(at pose: FramePose, target: String) -> String? {
+        let lifetime = 0..<Self.signLifetime
+        guard kind == .sign, pose.id.sameWorld(last.id), pose.normal,
+              lifetime.contains(pose.time - last.time),
+              let destination = Destination(wayfinding: target) else { return nil }
+        let recent = lifetime.contains(pose.time - (signObservedAt ?? last.time))
+        let local = lifetime.contains(pose.time - (labelObservedAt ?? last.time)) ? label : nil
+        guard let fact = WayfindingParser.rememberedFact(recent ? sign : nil, local: local,
+                                                         conflicting: recent && signConflict, for: destination) else { return nil }
+        let capture = lastReadPose
+        let sameStation = (pose.position - capture.position).length <= 0.38
+        guard sameStation || point != nil, let angle = bearing(at: pose), angle.isFinite else {
+            return "位置已变化，请转动手机重新查看标牌。"
+        }
+        if let footprint = projectedBox(at: pose), footprint.valid {
+            let x = footprint.center.0
+            let side = x < 0.38 ? "左侧" : (x > 0.62 ? "右侧" : "前方")
+            // A fresh inscription can survive a pan, or be reacquired using a triangulated point.
+            if pose.time - capture.time <= 2, sameStation || abs(angle) <= 18 {
+                return "手机\(side)有标牌。" + fact
+            }
+            // Delayed OCR describes its capture. Only recall it while the phone still has that view.
+            if sameStation, pose.sameView(as: capture, within: 12) {
+                return "刚才在手机\(side)读到标牌。" + fact
+            }
+        }
+        guard abs(angle) > 18 else { return "请转动手机重新查看标牌。" }
+        let side = abs(angle) >= 165 ? "后方" : (angle < 0 ? "左侧" : "右侧")
+        return "请转动手机，查看\(side)的标牌。"
+    }
+}
+
+extension WayfindingParser {
+    private static func inscriptions(_ text: String) -> [String] {
+        text.split(whereSeparator: \.isNewline).map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    static func sameInscription(_ lhs: String, _ rhs: String) -> Bool {
+        let a = inscriptions(lhs), b = inscriptions(rhs)
+        return a.count == b.count && zip(a, b).allSatisfy { sameName($0, $1) }
+    }
+
+    static func compatibleInscription(_ lhs: String, _ rhs: String) -> Bool {
+        if sameInscription(lhs, rhs) { return true }
+        // OCR can include the printed arrow or ROOM prefix while the structured label omits it.
+        func legend(_ text: String) -> String {
+            var value = SignParser.normalize(text)
+            for glyph in SignArrow.allCases { value = value.replacingOccurrences(of: glyph.rawValue, with: " ") }
+            return value.replacingOccurrences(of: #"^(?:CLASSROOM|ROOM|RM\.?)\s*[-:：]?\s*(?=[A-Z]{0,3}\d)"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespaces)
+        }
+        let a = inscriptions(lhs).map(legend), b = inscriptions(rhs).map(legend)
+        return a.count == 1 && b.count == 1 && !a[0].isEmpty && sameName(a[0], b[0])
+    }
+
+    /// Return only grounded identifiers, known symbols and arrows. Arbitrary text on the
+    /// sign never becomes free-form speech, a movement command or an arrival event.
+    fileprivate static func rememberedFact(_ meaning: SignMeaning?, local: String?, conflicting: Bool, for goal: Destination) -> String? {
+        guard meaning != nil || local != nil || conflicting else { return nil }
+        let inspect = "请转动手机，核对标识和同一行的文字。"
+        let symbol = meaning?.symbol ?? .unknown
+        let rows = inscriptions(local ?? meaning?.text ?? "")
+        let lines = rows.map { SignLine($0) }
+        let reading = SignParser.analyze(lines, for: goal)
+        if reading.kind == .restricted || rows.contains(where: isRestriction) {
+            return "牌上有限制提示，请核对现场原文。"
+        }
+        let disagrees = local.map { meaning?.agrees(withLocal: $0) == false } ?? false
+        if conflicting || disagrees {
+            if local != nil, case .room = goal, reading.kind == .target || reading.kind == .neighbor {
+                return "本机读到门牌「\(reading.evidence)」，请核对牌面。"
+            }
+            return "牌面读数有冲突。" + inspect
+        }
+        let directory = symbol == .directory || (rows.count > 1 && reading.kind == .range)
+        let facts = read(.init(lines: lines, reading: reading), for: goal, landmark: nil, directory: directory)
+        let board = facts.signboard
+        if facts.target == .ambiguous { return "目录中有不同的目标条目，请移动手机核对同一行。" }
+        let matching = rows.filter { matches(SignParser.normalize($0), destination: goal) }
+        // The relay sends a separate box per printed row. An arrow on a whole board has no such association.
+        let scoped = rows.count <= 1 && (!board || !matching.isEmpty) ? meaning?.arrow : nil
+        let rowGlyphs = Set(matching.flatMap { row in SignArrow.allCases.filter { row.contains($0.rawValue) } })
+        let evidence = rows.count == 1 ? (local ?? "") + (meaning?.text ?? "") : ""
+        let singleRowGlyphs = Set(SignArrow.allCases.filter { evidence.contains($0.rawValue) })
+        if rowGlyphs.count > 1 || singleRowGlyphs.count > 1 { return inspect }
+        if let scoped, let printed = singleRowGlyphs.first, scoped != printed { return inspect }
+        var arrow = rowGlyphs.first ?? scoped
+        if !matching.isEmpty {
+            var detail = board ? "目录列有" : "牌面文字提到"
+            detail += "「\(reading.kind == .range ? reading.evidence : goal.text)」"
+            if case .listed(let site) = facts.target, let level = site.level { detail += "，楼层标注为\(level)" }
+            if let arrow { detail += "，牌上箭头向\(arrow.words)" }
+            return detail + "。"
+        }
+        if board { return "这是一块目录牌。请移动手机查看目标所在的一行。" }
+        // A locally read neighbouring room can establish context when seeking another room.
+        if let local, case .room = goal {
+            let neighbor = SignParser.analyze([SignLine(local)], for: goal)
+            if neighbor.kind == .neighbor { return "附近门牌写有「\(neighbor.evidence)」。" }
+        }
+        let name: String?
+        switch (symbol, goal) {
+        case (.elevator, .facility(.lift)), (.exit, .facility(.exit)), (.restroom, .facility(.restroom)), (.stairs, .facility(.stairs)):
+            name = goal.text
+        case (.accessible, .named(let label)) where label.contains("无障碍") || label.contains("無障礙") || key(label) == "ACCESSIBLE": name = "无障碍"
+        case (.clinic, .named(let label)) where ["诊室", "诊所", "门诊", "CLINIC"].contains(key(label)): name = "门诊"
+        case (.shop, .named(let label)) where ["商店", "店铺", "SHOP"].contains(key(label)): name = "商店"
+        case (.room, .room): return rows.isEmpty ? inspect : nil
+        case (.room, _) where goal.isClassroomDoor: return inspect
+        default: name = nil
+        }
+        guard let name else { return nil }
+        // If another facility is printed, the icon and text cannot establish one direction.
+        if Facility.allCases.contains(where: { facility in goal != .facility(facility) && SignParser.analyze(lines, for: .facility(facility)).kind != .unclear }) { arrow = nil }
+        return "牌面有\(name)图标" + (arrow.map { "，牌上箭头向\($0.words)" } ?? "") + "。"
     }
 }

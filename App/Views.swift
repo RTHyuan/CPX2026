@@ -148,8 +148,8 @@ struct RootView: View {
             if scanner.canGuide, scanner.lastSpatialCue == .face {
                 Button("手机已朝向身体前方") { scanner.bodyForward() }.buttonStyle(SignButton(tone:.primary)).accessibilityIdentifier("bodyForward")
             }
-            if scanner.canGuide && route.target.isClassroomDoor {
-                Button("站定复核，寻找平坦过道") { scanner.rescanPassage() }.buttonStyle(SignButton()).accessibilityIdentifier("rescanPassage")
+            if scanner.canGuide {
+                Button("重新寻找平坦过道") { scanner.rescanPassage() }.buttonStyle(SignButton()).accessibilityIdentifier("rescanPassage")
                 if scanner.canCheckDoor { Button("我已在门边，已核对这扇门") { scanner.confirmDoor() }.buttonStyle(SignButton()).accessibilityIdentifier("manualDoor") }
             }
             cameraPanel
@@ -223,7 +223,7 @@ struct RootView: View {
         NavigationStack {
             List {
                 info("开始导航", "location", "点“说出目的地”，例如“带我去教室门口”。也可以输入房号、科室或店名。首次导航请允许后置相机。")
-                info("站定读牌", "viewfinder", "缓慢转向四周。看到牌时稍作停留，让名称、楼层和同一行的箭头一起进入画面。")
+                info("查看路牌", "viewfinder", "转动手机环顾四周。看到牌时，让名称、楼层和对应箭头一起入镜。导航会记住标识的位置。")
                 info("现场核对", "signpost.right", "请核对通道和独立门牌后再确认。行走和避障时，继续使用惯常的出行辅助。")
                 info("相机与隐私", "lock", "位姿、近场通行图和识别默认在本次导航中处理。启用云端后，选中的画面、目的地、相关位姿和线索会经演示 Mac 发给 DeepSeek。暂停、进入后台或结束会停止采集和发送。中文语音输入使用本机识别。")
                 Section("云端视觉") {

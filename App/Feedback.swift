@@ -20,6 +20,7 @@ enum NavigationHaptic: String { case start, guidance, warning, arrival, alignmen
     private var ownsAudio = false
     private var speaking: AVSpeechUtterance?
     private var announcement: String?
+    func isSpeaking(_ text: String) -> Bool { speaking?.speechString == text || announcement == text }
     private var pending: String?
     private var startupTimeout: Task<Void, Never>?
 

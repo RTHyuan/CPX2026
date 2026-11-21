@@ -14,3 +14,6 @@ xcuserdata/
 /output/*.zip
 /Submission/poster/
 __pycache__/
+
+# Private plaintext source configuration on the demo Mac
+/Proxy/local_settings.py

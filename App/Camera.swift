@@ -21,8 +21,24 @@ import ARKit
 import Vision
 import MetalKit
 
+private extension FloorImage {
+    var containsGraphic: Bool {
+        var edges = 0
+        for y in stride(from: 3, to: h - 10, by: 2) {
+            for x in stride(from: 3, to: w - 3, by: 2) {
+                if max(abs(value(x-1,y)-value(x+1,y)), abs(value(x,y-1)-value(x,y+1))) > 32 {
+                    edges += 1
+                    if edges >= 16 { return true }
+                }
+            }
+        }
+        return false
+    }
+}
+
 struct KeyObservation {
     let pose: FramePose, features: [Sighting], signs: FrameResult?, jpeg: Data?, sentWidth: Int, sentHeight: Int
+    var sceneSignature: UInt64? = nil
 }
 enum CameraEvent {
     case state(CaptureState), frame(FrameResult, sampledAt: TimeInterval), error(String)
@@ -55,13 +71,12 @@ final class SignCamera: NSObject, ARSessionDelegate {
     private var nearEngine=NearVision(), recentObjects:(FramePose,[Sighting])?
     private let reader=SignVision()
     #if DEBUG && targetEnvironment(simulator)
-    private let replay=SimulatorFeed()
-    private lazy var evidence: [SimulatorEvidence] = {
-        guard let text=ProcessInfo.processInfo.environment["PATHSENSE_TEST_EVIDENCE"] else {return []}
-        return (try? JSONDecoder().decode([SimulatorEvidence].self,from:Data(text.utf8))) ?? []
-    }()
+    // Construct the feed on the capture queue, including its one-time loopback pixel load.
+    private lazy var replay = SimulatorFeed()
+    private let evidence = SimulatorEvidenceTape()
+    private var replayReading = false
     private var replayIndex=0
-    var isReplaying:Bool { replay != nil }
+    var isReplaying: Bool { ProcessInfo.processInfo.environment["PATHSENSE_TEST_CAMERA"] != nil }
     #endif
     func updateOrientation(_ device: UIDeviceOrientation) {
         let o:CGImagePropertyOrientation
@@ -175,11 +190,14 @@ final class SignCamera: NSObject, ARSessionDelegate {
             }
         }
         var jpeg:Data?, width=0,height=0
-        if cloud && pose.normal && near.visible {
+        // A high-contrast pictogram can be legible even on a textureless wall. Near-field
+        // eligibility certifies a walking strip and must not be the only way to send a sign.
+        let signDetail = cloud && (candidates.contains { $0.kind == .sign } || gray?.containsGraphic == true)
+        if cloud && pose.normal && (near.visible || signDetail) {
             let scale=min(1,768/max(image.extent.width,image.extent.height)); let small=image.transformed(by:.init(scaleX:scale,y:scale))
             if let cg=RouteVision.renderer.createCGImage(small,from:small.extent.integral) { jpeg=UIImage(cgImage:cg).jpegData(compressionQuality:0.64); width=cg.width;height=cg.height }
         }
-        return .init(pose:pose,features:candidates,signs:frame,jpeg:jpeg,sentWidth:width,sentHeight:height)
+        return .init(pose:pose,features:candidates,signs:frame,jpeg:jpeg,sentWidth:width,sentHeight:height,sceneSignature:gray?.signature(.init(0.10,0.10,0.90,0.73)))
     }
     private static func furniture(_ buffer:CVPixelBuffer,_ o:CGImagePropertyOrientation) -> [Sighting] {
         let handler=VNImageRequestHandler(cvPixelBuffer:buffer,orientation:o); var items:[Sighting]=[]
@@ -195,19 +213,47 @@ final class SignCamera: NSObject, ARSessionDelegate {
     }
     #if DEBUG && targetEnvironment(simulator)
     private func replayNext(id:UUID) {
-        guard let s=stream,s.id==id,let sample=replay?.next() else {return}
+        guard let s = stream, s.id == id else { return }
+        let observation = evidence?.sample(at: replayIndex)
+        guard let sample = replay?.next(picture: observation?.picture, cloud: s.cloud && observation != nil) else { return }
         let t=ProcessInfo.processInfo.systemUptime
-        if !evidence.isEmpty {
-            let observation=evidence[min(replayIndex,evidence.count-1)]
-            let (pose, near)=observation.events(session:id,sequence:replayIndex,time:t)
+        if let observation {
+            let buffer = sample.buffer
+            let width = CVPixelBufferGetWidth(buffer), height = CVPixelBufferGetHeight(buffer)
+            let (pose, near) = observation.events(session: id, sequence: replayIndex, time: t, width: width, height: height)
             gate.sync { lastPublished=pose }; s.event(.pose(pose)); s.event(.near(near))
             if replayIndex % 3 == 0 {
-                if let preview=sample.preview { s.event(.preview(preview)); let jpeg=s.cloud ? preview.jpegData(compressionQuality:0.65):nil
-                    s.event(.key(.init(pose:pose,features:observation.features,signs:nil,jpeg:jpeg,sentWidth:preview.cgImage?.width ?? 0,sentHeight:preview.cgImage?.height ?? 0))) }
+                s.event(.preview(sample.preview))
+                if observation.readSigns == true {
+                    // Run the same key builder as AR capture, once, against this retained buffer
+                    // and its own near field. New poses and person hazards keep flowing during OCR.
+                    if !replayReading {
+                        replayReading = true
+                        let localized = observation.features.filter { item in
+                            !near.hazards.contains(item) || (item.kind != .person && !(item.kind == .steps && item.label == nil))
+                        }
+                        semantics.async {
+                            var key = self.key(buffer, pose: pose, o: .up, near: near, target: s.target, cloud: s.cloud, localized: localized)
+                            key.sceneSignature = sample.signature
+                            let captured = key
+                            self.frames.async {
+                                self.replayReading = false
+                                guard self.stream?.id == id, self.stream?.target == s.target,
+                                      self.latestPose()?.id.sameWorld(pose.id) == true else { return }
+                                s.event(.key(captured))
+                            }
+                        }
+                    }
+                } else {
+                    // Geometry-only or relay-only tape. No local recognition runs on these pixels.
+                    let jpeg = s.cloud && pose.normal && near.visible ? sample.preview.jpegData(compressionQuality: 0.65) : nil
+                    s.event(.key(.init(pose: pose, features: observation.features, signs: nil, jpeg: jpeg,
+                                       sentWidth: jpeg == nil ? 0 : width, sentHeight: jpeg == nil ? 0 : height, sceneSignature: sample.signature)))
+                }
             }
             replayIndex += 1; frames.asyncAfter(deadline:.now()+0.15) { [weak self] in self?.replayNext(id:id) }; return
         }
-        if let preview=sample.preview {s.event(.preview(preview))}
+        s.event(.preview(sample.preview))
         if let result=try? reader.frame(sample.buffer,orientation:.up,target:s.target) { s.event(.frame(result,sampledAt:t)) }
         frames.asyncAfter(deadline:.now()+max(0.02,0.55-(ProcessInfo.processInfo.systemUptime-t))) { [weak self] in self?.replayNext(id:id) }
     }
@@ -252,11 +298,22 @@ private final class SimulatorFeed {
     private var count = 0
     private var index = -1
     private var buffer: CVPixelBuffer?
+    private var signature: UInt64?
 
     init?() {
         let env = ProcessInfo.processInfo.environment
         guard let fixture = env["PATHSENSE_TEST_CAMERA"] else { return nil }
-        pictures = (0..<12).compactMap { env["PATHSENSE_TEST_PIXELS_\($0)"].flatMap { Data(base64Encoded: $0) }.flatMap { UIImage(data: $0) } }
+        if let raw = env["PATHSENSE_TEST_FRAME_SOURCE"] {
+            // The runner serves private field captures on a per-launch loopback capability. Names,
+            // paths and labels never enter navigation. Preserve the full upright source pixels.
+            guard let url = URL(string: raw), url.scheme == "http", url.host == "127.0.0.1",
+                  let bytes = try? Data(contentsOf: url), let frames = try? PropertyListDecoder().decode([Data].self, from: bytes),
+                  !frames.isEmpty else { preconditionFailure("Cannot load field pixels from the local UI runner") }
+            pictures = frames.compactMap { UIImage(data: $0) }
+            precondition(pictures.count == frames.count, "Unreadable field capture")
+        } else {
+            pictures = (0..<12).compactMap { env["PATHSENSE_TEST_PIXELS_\($0)"].flatMap { Data(base64Encoded: $0) }.flatMap { UIImage(data: $0) } }
+        }
         repeats = max(2, Int(env["PATHSENSE_TEST_HOLD"] ?? "") ?? 7)
         switch fixture {
         case "denied": state = .denied
@@ -265,10 +322,10 @@ private final class SimulatorFeed {
         default: state = pictures.isEmpty ? .unavailable : .ready
         }
     }
-    func next() -> (buffer: CVPixelBuffer, preview: UIImage?)? {
+    func next(picture: Int?, cloud: Bool) -> (buffer: CVPixelBuffer, preview: UIImage, signature: UInt64?)? {
         guard !pictures.isEmpty else { return nil }
-        let current = min(count / repeats, pictures.count - 1)
-        var preview: UIImage?
+        let current = picture ?? min(count / repeats, pictures.count - 1)
+        precondition(pictures.indices.contains(current), "Missing simulator image at index \(current)")
         if index != current || buffer == nil {
             guard let cg = pictures[current].cgImage else { return nil }
             let image = CIImage(cgImage: cg)
@@ -278,12 +335,23 @@ private final class SimulatorFeed {
             renderer.render(image, to: next, bounds: image.extent, colorSpace: CGColorSpaceCreateDeviceRGB())
             buffer = next
             index = current
+            signature = nil
+        }
+        // The replay buffer is BGRA rather than a planar camera buffer. Sample its image once
+        // for the same luminance descriptor used to select a newly visible sign for upload.
+        if cloud, signature == nil, let cg = pictures[current].cgImage {
+            var gray = [UInt8](repeating: 0, count: 96 * 96)
+            let drawn = gray.withUnsafeMutableBytes { bytes in
+                guard let ctx = CGContext(data: bytes.baseAddress, width: 96, height: 96, bitsPerComponent: 8,
+                                          bytesPerRow: 96, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: 0) else { return false }
+                ctx.draw(cg, in: CGRect(x: 0, y: 0, width: 96, height: 96)); return true
+            }
+            if drawn { signature = FloorImage(pixels: gray).signature(.init(0.10, 0.10, 0.90, 0.73)) }
         }
         // Also populate the preview when a paused UI resumes on an unchanged frame.
-        preview = pictures[current]
         count += 1
         guard let buffer else { return nil }
-        return (buffer, preview)
+        return (buffer, pictures[current], signature)
     }
 }
 #endif

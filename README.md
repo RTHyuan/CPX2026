@@ -33,11 +33,13 @@
 
 ## 演示 Mac 与 iPhone 配对
 
-在工程根目录运行 `./Scripts/start-navigation-proxy.sh`。代理从进程环境 `DEEPSEEK_API_KEY` 读取凭据，缺少时在终端隐藏输入。Mac 和 iPhone 加入同一可信 Wi-Fi，在 iPhone 的「使用说明 → 云端视觉」填入终端显示的完整配对地址，点「启用云端视觉」并阅读授权说明。使用 `.local` 主机名和本轮地址尾部的随机串。若系统询问本地网络权限，允许后开始新一轮扫描。服务端把图文请求转给 `deepseek-flash`。按 `Ctrl-C` 可结束本轮配对。
+在工程根目录运行 `./Scripts/start-navigation-proxy.sh`。本机演示代理优先读取环境变量 `DEEPSEEK_API_KEY`，也可直接读取演示 Mac 上私有的明文源码配置 `Proxy/local_settings.py`（变量名相同）。该文件只留在本机。Mac 和 iPhone 加入同一可信 Wi-Fi，在 iPhone 的「使用说明 → 云端视觉」填入终端显示的完整配对地址，点「启用云端视觉」并阅读授权说明。使用 `.local` 主机名和本轮地址尾部的随机串。若系统询问本地网络权限，允许后开始新一轮扫描。服务端把图文请求转给 `deepseek-flash`。按 `Ctrl-C` 可结束本轮配对。
 
 自训练的 `SignContext`、训练样本、训练脚本和历史推理代码保存在仓库。App 和常规测试仅运行系统 Vision 和规则解析。可用 `python3 Scripts/check-app-bundle.py <PathSense.app 路径>` 检查实际安装包。
 
-[Air 验证记录与路线差异](docs/air-field.md)
+**产品待决定**：未来如何为用户提供大模型服务，由产品方另行决定。本轮用演示 Mac 配对。
+
+现场实拍回放可运行 `Scripts/replay-field.sh SIMULATOR_UDID`。恢复私有视频帧和查阅逐段结论见[本轮开发与验证](docs/field-feedback.md) · [Air 验证记录与路线差异](docs/air-field.md)
 
 ## 验证和复现
 
