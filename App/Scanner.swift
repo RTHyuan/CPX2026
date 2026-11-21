@@ -1,190 +1,318 @@
 import SwiftUI
-import AVFAudio
-import UIKit
-
-enum ScanMode: String, CaseIterable, Identifiable {
-    case live = "连续扫描", snapshot = "拍一次", photos = "照片"
-    var id: Self { self }
-}
-
-enum PracticeCard: String, CaseIterable, Identifiable {
-    case nearby, span, similar, target, index, facility, blank
-    var id: Self { self }
-    var label: String {
-        switch self { case .nearby: return "303"; case .span: return "301–310"; case .similar: return "3050"; case .target: return "305"; case .index: return "楼层目录"; case .facility: return "电梯"; case .blank: return "空白墙面" }
-    }
-    var url: URL? { Bundle.main.url(forResource: rawValue, withExtension: "png", subdirectory: "Practice") }
-}
-
-@MainActor final class Feedback {
-    private let synthesizer = AVSpeechSynthesizer()
-    private let haptic = UINotificationFeedbackGenerator()
-    func say(_ message: String, sound: Bool, success: Bool = false) {
-        if success { haptic.notificationOccurred(.success) }
-        if UIAccessibility.isVoiceOverRunning {
-            synthesizer.stopSpeaking(at: .immediate)
-            UIAccessibility.post(notification: .announcement, argument: message)
-            return
-        }
-        guard sound else { return }
-        synthesizer.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: message)
-        utterance.voice = AVSpeechSynthesisVoice(language: "zh-CN"); utterance.rate = 0.48
-        synthesizer.speak(utterance)
-    }
-    func stop() { synthesizer.stopSpeaking(at: .immediate) }
-}
 
 @MainActor final class Scanner: ObservableObject {
+    #if DEBUG && !targetEnvironment(simulator)
+    let diagnostics=DeviceDiagnostics()
+    #endif
     let camera = SignCamera()
-    private let feedback = Feedback()
-    private let worker = DispatchQueue(label: "PathSense.photo", qos: .userInitiated)
-    private let photoReader = SignVision()
+    let feedback = Feedback()
     @Published var entry = ""
-    @Published private(set) var target: Destination?
-    @Published private(set) var mode: ScanMode = .live
+    @Published private(set) var journey: WayfindingJourney?
+    var target: Destination? { journey?.target }
     @Published private(set) var capture: CaptureState = .starting
     @Published private(set) var isPaused = false
-    @Published private(set) var reading: SignReading?
     @Published private(set) var message = ""
-    @Published private(set) var raw = [SignLine]()
-    @Published private(set) var source = ""
-    @Published private(set) var photo: UIImage?
-    @Published private(set) var isReading = false
     @Published private(set) var validation = ""
-    @Published var sound: Bool { didSet { UserDefaults.standard.set(sound, forKey: "voice"); if !sound { feedback.stop() } } }
+    @Published var sound: Bool {
+        didSet { UserDefaults.standard.set(sound, forKey: "voice"); if !sound { feedback.stop() } }
+    }
     @Published private(set) var history: [String]
-    private var token = UUID()
-    private var gate = ScanGate(now: ProcessInfo.processInfo.systemUptime)
-    private var frame: UInt64 = 0
-    private var photoRequest = UUID()
-    private var backgrounded = false
-    private var readyAnnounced = false
+    #if DEBUG && targetEnvironment(simulator)
+    @Published private(set) var replayPreview: UIImage?
+    #endif
+    var cameraLabel: String {
+        #if DEBUG && targetEnvironment(simulator)
+        if replayPreview != nil { return "模拟镜头 · 持续扫描中" }
+        #endif
+        return "后置相机 · 持续扫描中"
+    }
+    var canGuide: Bool { journey != nil && journey?.stage != .arrived && capture == .ready && !isPaused }
+    @Published private(set) var listening = false
+    @Published private(set) var cloudEnabled = false
+    @Published var proxyAddress = ""
+    @Published private(set) var networkNote = "仅本机 · 可读牌、寻找门和提醒停步"
+    @Published private(set) var lastSpatialCue: CueKind?
+    @Published private(set) var canCheckDoor = false
+    @Published private(set) var metricsText = ""
+    @Published private(set) var mapNote = "无先验图"
+    private var prior: PriorMap?, live: LiveNavigation?
+    private var routeMeasures = WalkMeasures()
+    private let microphone = DestinationMicrophone()
+    private var utterance = "", manual = false
+
+    func dictate() {
+        if listening { microphone.finish(); return }
+        if journey != nil { end() }
+        feedback.stop(); listening=true; validation=""; entry=""
+        microphone.start(partial: { [weak self] text in self?.entry=text }) { [weak self] text, error in
+            guard let self else { return }; self.listening=false
+            if let text { self.entry=text; self.begin() }
+            else { self.validation=error ?? "请重新说出目的地。"; self.feedback.deliver(self.validation,sound:self.sound,interrupt:true) }
+        }
+    }
+    func cancelDictation() { microphone.cancel(); listening=false }
+    func configureCloud(enable: Bool) {
+        if enable && CloudClient.endpoint(proxyAddress)==nil { networkNote="请输入演示 Mac 显示的完整配对地址。"; return }
+        if journey != nil && !isPaused && journey?.stage != .arrived { stopCapture(); isPaused=true; message="配置已更新，点继续重新观察。"; spokenMessage=message }
+        cloudEnabled=enable
+        networkNote=enable ? "云端视觉已启用，等待首次关键帧。" : "仅本机 · 可读牌、寻找门和提醒停步"
+    }
+    func loadPrior(_ url:URL) {
+        let access=url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
+        do {
+            guard let n=try url.resourceValues(forKeys:[.fileSizeKey]).fileSize,n<=200_000 else {throw SpatialError.invalid}
+            let map=try JSONDecoder().decode(PriorMap.self,from:Data(contentsOf:url)); try map.validate(); prior=map
+            mapNote="已载入\(map.floor)参考图；匹配现场锚点后启用。"
+        } catch { prior=nil; mapNote="地图无法读取，使用现场观察。" }
+    }
+    func clearPrior() { prior=nil; mapNote="无先验图" }
+    func bodyForward() { live?.face() }
+    func rescanPassage() { live?.retry() }
+    func confirmDoor() { manual=true; live?.manualFinish(); manual=false }
+    func cancelForHelp() { if listening { cancelDictation() }; if canGuide {pauseOrResume()} }
+    private func rememberMeasures() {
+        guard let measures=live?.measures, let data=try? JSONEncoder().encode(measures) else {return}
+        metricsText=String(decoding:data,as:UTF8.self)
+    }
+    private func spatial(_ cue:LocalCue) {
+        guard canGuide else {return}; lastSpatialCue=cue.kind; canCheckDoor=live?.canManuallyVerifyDoor ?? false
+        if cue.kind == .arrived, var route=journey { rememberMeasures(); route.finishedDoor(manual:manual); apply(route); return }
+        if cue.kind == .aligned {
+            feedback.deliver("",sound:false,haptic:.alignment); return
+        }
+        present(cue.text, haptic: cue.kind == .stop ? .emergency : nil, interrupt:true)
+    }
+    private var sessionID = UUID()
+    private var gate = RouteEvidenceGate(now: 0)
+    private var acceptSince: TimeInterval = 0
+    private var spokenMessage = ""
+    private var returningFromSettings = false
+    private var expiry: Task<Void, Never>?
+    private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
 
     init() {
-        sound = UserDefaults.standard.object(forKey: "voice") as? Bool ?? true
-        history = UserDefaults.standard.stringArray(forKey: "recentTargets") ?? []
+        let defaults = UserDefaults.standard
+        defaults.register(defaults: ["voice": true])
+        sound = defaults.bool(forKey: "voice")
+        history = defaults.stringArray(forKey: "recentTargets") ?? []
     }
-    func begin(mode: ScanMode) {
-        guard let destination = Destination(entry) else { validation = "请说或输入一个完整房号，例如三零五、A305，或选择下方设施。"; feedback.say(validation, sound: sound); return }
-        target = destination; self.mode = mode; entry = destination.text; validation = ""
-        history = Array(([entry] + history.filter { $0 != entry }).prefix(4))
-        UserDefaults.standard.set(history, forKey: "recentTargets")
-        gate = ScanGate(now: ProcessInfo.processInfo.systemUptime)
-        resetCapture(); openSource()
+    func begin() {
+        cancelDictation()
+        guard let destination = Destination(wayfinding: entry) else {
+            validation = "请输入房号、科室、店名或设施名称。"
+            feedback.deliver(validation, sound: sound, interrupt: true)
+            return
+        }
+        stopCapture()
+        metricsText=""; routeMeasures=WalkMeasures(); utterance=entry
+        journey = WayfindingJourney(target: destination)
+        entry = destination.text
+        validation = ""
+        // Free-form names can reveal a medical visit. Keep them in the active journey only.
+        switch destination {
+        case .room, .facility:
+            history = Array(([entry] + history.filter { $0 != entry }).prefix(4))
+            UserDefaults.standard.set(history, forKey: "recentTargets")
+        case .named: break
+        }
+        startCapture(opening: "开始导航")
     }
-    func selectMode(_ new: ScanMode) {
-        guard new != mode else { return }
-        resetCapture(); mode = new; openSource()
+    func end() {
+        stopCapture()
+        journey = nil
+        utterance=""
+        isPaused = false
+        returningFromSettings = false
+        validation = ""
+        message = ""
+        spokenMessage = ""
     }
     func pauseOrResume() {
-        guard target != nil else { return }
-        if isPaused { resetCapture(); openSource() }
-        else {
-            resetCapture(); isPaused = true; message = "扫描已暂停。"; feedback.say(message, sound: sound)
+        guard journey != nil, journey?.stage != .arrived else { return }
+        if isPaused { startCapture() }
+        else if canGuide {
+            stopCapture()
+            isPaused = true
+            present("扫描已暂停。点继续，接着找当前目的地。")
         }
     }
-    func end() { resetCapture(); target = nil; validation = "" }
+    func retryCamera() {
+        guard journey != nil, journey?.stage != .arrived, !isPaused else { return }
+        stopCapture()
+        startCapture()
+    }
     func background() {
-        guard target != nil else { return }
-        backgrounded = true
-        if !isPaused { resetCapture(); isPaused = true; message = "扫描已暂停，返回后可以继续。" }
+        cancelDictation()
+        guard journey != nil, journey?.stage != .arrived, !isPaused else { feedback.stop(); return }
+        returningFromSettings = capture == .denied || capture == .restricted
+        stopCapture()
+        isPaused = true
+        message = "扫描已暂停，点继续可恢复本次导航。"
+        spokenMessage = message
     }
     func foreground() {
-        if backgrounded { backgrounded = false; return }
-        if target != nil, !isPaused, capture == .denied, AVCaptureDevice.authorizationStatus(for: .video) == .authorized { resetCapture(); openSource() }
-    }
-    func repeatLast() { if !message.isEmpty { feedback.say(message, sound: true) } }
-    func shutter() { guard capture == .ready, !isReading, !isPaused else { return }; isReading = true; camera.snapshot() }
-    func report(_ error: String) {
-        isReading = false
-        reading = nil
-        raw = []
-        photo = nil
-        source = ""
-        message = error
-        feedback.say(error, sound: sound)
-    }
-    func startImport() -> UUID { photoRequest = UUID(); return photoRequest }
-    func importError(for request: UUID) { guard request == photoRequest, mode == .photos, !isPaused else { return }; report("照片未能载入，请选择另一张图片。") }
-    func practice(_ card: PracticeCard) {
-        guard let url = card.url, let data = try? Data(contentsOf: url) else { report("练习图片未能载入。"); return }
-        loadPhoto(data, from: "练习标牌", request: startImport())
-    }
-    func loadPhoto(_ data: Data, from name: String, request: UUID) {
-        guard !isPaused, mode == .photos, let target, request == photoRequest else { return }
-        isReading = true; reading = nil; raw = []; message = "正在读取图片…"; source = name
-        let current = token
-        worker.async { [weak self, photoReader] in
-            let preview: UIImage? = ImageThumbnail.make(data)
-            let result = Result { try photoReader.photo(data, target: target) }
-            DispatchQueue.main.async {
-                guard let self, self.token == current, self.photoRequest == request else { return }
-                self.isReading = false; self.photo = preview
-                switch result { case .success(let frame): self.acceptPhoto(frame); case .failure: self.report("无法读取这张图，请更换照片。") }
-            }
+        if returningFromSettings {
+            returningFromSettings = false
+            startCapture()
         }
     }
-    private func acceptPhoto(_ result: FrameResult) {
-        raw = result.lines
-        display(result.reading, single: true)
+    func routeAction(_ action: WayfindingJourney.Action) {
+        guard canGuide, var route = journey, route.action == action else { return }
+        route.confirm()
+        apply(route)
     }
-    private func resetCapture() {
-        token = UUID(); photoRequest = UUID(); gate.restartObservations(now: ProcessInfo.processInfo.systemUptime); frame = 0
-        feedback.stop(); camera.stop(); isPaused = false; reading = nil; raw = []; photo = nil; source = ""; message = ""; isReading = false; readyAnnounced = false
+    func selectRouteChoice(_ option: RouteChoice) {
+        guard canGuide, var route = journey, route.choices.contains(option) else { return }
+        route.choose(option)
+        camera.updateTarget(route.searchTarget)
+        apply(route)
     }
-    private func openSource() {
-        guard let target else { return }
-        if mode == .photos {
-            message = "选择一张标牌照片，或试用下方练习标牌。"; feedback.say("正在寻找\(SignReading.spoken(target.text))。\(message)", sound: sound); return
-        }
-        capture = .starting; message = "正在打开相机…"
+    func publicArea() {
+        guard canGuide, var route = journey else { return }
+        route.enteredPublicArea()
+        apply(route)
+    }
+    func locateAgain() {
+        guard canGuide, var route = journey else { return }
+        route.relocalize()
+        camera.updateTarget(route.searchTarget)
+        gate = RouteEvidenceGate(now: now)
+        apply(route)
+    }
+    private func apply(_ route: WayfindingJourney) {
+        // Discard in-flight samples from before the tap. Keep the delivery latch so
+        // holding the camera on a transfer arrow cannot undo a confirmed transition.
+        acceptSince = now
+        expiry?.cancel()
+        if route.stage == .arrived { live?.finishMeasures(manual:true); stopCapture() }
+        journey = route; live?.updateRoute(route,userChanged:true)
+        if let live, live.nav.current != nil && !live.allowsSignDirections { if let cue=live.nav.cueForSafety { spatial(cue) }; return }
+        present(route.cue, speech: route.prompt.speech, haptic: route.stage == .arrived ? .arrival : .guidance, interrupt: true)
+    }
+    private func present(_ text: String, speech: String? = nil, haptic: NavigationHaptic? = nil, interrupt: Bool = false) {
+        message = text
+        live?.instruction(speech ?? text)
+        spokenMessage = speech ?? text
+        feedback.deliver(spokenMessage, sound: sound, haptic: haptic, interrupt: interrupt)
+    }
+    func repeatLast() { feedback.deliver(spokenMessage, sound: true, interrupt: true) }
+    private func clearEvidence() {
+        expiry?.cancel()
+        acceptSince = now
+        gate = RouteEvidenceGate(now: acceptSince)
+        journey?.expireConfirmation()
+    }
+    private func stopCapture() {
+        if let live { live.closeSegment(); routeMeasures=live.measures; rememberMeasures(); live.stop() }
+        live=nil; lastSpatialCue=nil; canCheckDoor=false
+        feedback.onSpeech=nil
+        sessionID = UUID()
+        camera.stop()
+        feedback.stop()
+        clearEvidence()
+        capture = .starting
+        #if DEBUG && targetEnvironment(simulator)
+        replayPreview = nil
+        #endif
+    }
+    private func startCapture(opening: String = "继续导航") {
+        guard let route = journey else { return }
+        let target = route.searchTarget
+        isPaused = false
+        capture = .starting
+        let intro = "\(opening)，正在寻找\(SignReading.spoken(target.text))。"
+        present(capture.description, speech: intro + route.prompt.speech, haptic: .start, interrupt: true)
         camera.updateOrientation(UIDevice.current.orientation)
-        let current = token
-        camera.start(id: current, target: target, single: mode == .snapshot) { [weak self] event in
-            DispatchQueue.main.async { guard let self, self.token == current else { return }; self.handle(event) }
+        let id = sessionID
+        let endpoint=cloudEnabled ? CloudClient.endpoint(proxyAddress):nil
+        live=LiveNavigation(route:route,utterance:utterance,endpoint:endpoint,prior:prior,camera:camera,previousMeasures:routeMeasures,output:{ [weak self] cue in self?.spatial(cue) },status:{ [weak self] note in
+            guard let self, self.networkNote != note else {return}; self.networkNote=note
+            if note.hasPrefix("云端暂不可用"), self.lastSpatialCue != .stop { self.feedback.deliver("云端暂不可用，本机仍在扫描。",sound:self.sound) }
+        })
+        feedback.onSpeech={ [weak self] text,time,ended in self?.live?.speech(text,time:time,ended:ended) }
+        camera.start(id: id, target: target, cloud: endpoint != nil) { [weak self] event in
+            DispatchQueue.main.async {
+                guard let self, self.sessionID == id, !self.isPaused else { return }
+                self.handle(event)
+            }
         }
     }
     private func handle(_ event: CameraEvent) {
+        #if DEBUG && !targetEnvironment(simulator)
+        diagnostics.observe(event)
+        #endif
         switch event {
         case .state(let state):
+            guard capture != state else { return }
+            let wasInterrupted = capture == .interrupted
             capture = state
-            if state == .ready {
-                if !readyAnnounced, let target {
-                    readyAnnounced = true; gate.restartObservations(now: ProcessInfo.processInfo.systemUptime)
-                    message = mode == .live ? "请站定，缓慢移动手机寻找标牌。" : "请站定，对准标牌后点拍照识字。"
-                    feedback.say("正在寻找\(SignReading.spoken(target.text))。\(message)", sound: sound)
-                }
+            if state == .ready, let route = journey {
+                message = route.cue
+                spokenMessage = route.prompt.speech
+                if wasInterrupted { feedback.deliver(spokenMessage, sound: sound, haptic: .start, interrupt: true) }
             } else {
-                readyAnnounced = false
-                reading = nil
-                raw = []
-                isReading = false
-                message = state.description
-                if state != .starting { feedback.say(message, sound: sound) }
+                live?.sessionInterrupted(); clearEvidence()
+                present(state.description, haptic: .warning, interrupt: true)
             }
-        case .frame(let result, let single, let sampledAt):
-            guard capture == .ready else { return }; isReading = false; raw = result.lines
-            if single { acceptPhoto(result) }
-            else {
-                frame &+= 1
-                if let value = gate.ingest(result.reading, frame: frame, now: sampledAt) { display(value, single: false) }
-            }
-        case .error(let reason): report(reason)
+        case .pose(let pose):
+            guard canGuide else {return}; live?.pose(pose)
+        case .near(let near):
+            guard canGuide else {return}; live?.near(near)
+        case .key(let key):
+            guard canGuide, let current=camera.latestPose(), current.id.sameWorld(key.pose.id), key.pose.time >= acceptSince else {return}
+            if let signs=key.signs, target?.isClassroomDoor != true { consumeSigns(signs, at:key.pose.time, spatial:true) }
+            live?.observation(key)
+            let check=live?.canManuallyVerifyDoor ?? false; if check != canCheckDoor {canCheckDoor=check}
+        case .frame(let frame, let sampledAt):
+            consumeSigns(frame,at:sampledAt,spatial:false)
+        case .error(let reason):
+            guard canGuide else { return }; clearEvidence()
+            if message != reason { present(reason,haptic:.warning,interrupt:true) }
+        #if DEBUG && targetEnvironment(simulator)
+        case .preview(let image): replayPreview = image
+        #endif
         }
     }
-    private func display(_ value: SignReading, single: Bool) {
-        guard let target else { return }; reading = value
-        message = (single ? "单张图片。" : "") + value.sentence(for: target)
-        feedback.say(message, sound: sound, success: gate.shouldSignalSuccess(for: value))
+    private func consumeSigns(_ frame:FrameResult,at sampledAt:Double,spatial:Bool) {
+            guard canGuide, sampledAt >= acceptSince, var route = journey else { return }
+            let signs = WayfindingParser.read(frame, for: route.searchTarget, landmark: route.site.landmark)
+            if route.action == .atDestination {
+                if signs.target == .plate, !signs.restricted { armExpiry() }
+                else {
+                    clearEvidence()
+                    route.expireConfirmation()
+                    if !spatial { present(route.cue, speech: route.prompt.speech, interrupt: true) }
+                }
+            }
+            guard gate.accept(signs, at: sampledAt) else { return }
+            route.observe(signs)
+            journey = route; live?.updateRoute(route)
+            if spatial {
+                if route.action == .atDestination { armExpiry() }
+                if lastSpatialCue == .stop || live?.nav.emergency == true { return }
+                let text: String
+                if signs.restricted {text="请停在当前位置，核对通行限制。"}
+                else if live?.allowsSignDirections == true {text=route.cue}
+                else if let floor=signs.currentLevel {text="楼层标识写着\(floor)。请站定核对。"}
+                else if signs.target == .plate {text="读到\(route.searchTarget.text)的独立门牌。请站定核对。"}
+                else if let id=signs.nearbyRoom {text="附近门牌写着\(id)。请站定核对。"}
+                else if signs.signboard {text="读到目录，请站定核对目标条目。"} else {return}
+                if message != text {present(text,speech: text == route.cue ? route.prompt.speech : SignReading.spoken(text),interrupt:signs.restricted)}
+                return
+            }
+            if route.action == .atDestination { armExpiry() }
+            if message != route.cue {
+                let haptic: NavigationHaptic? = signs.restricted ? .warning : (signs == WayfindingSigns() ? nil : .guidance)
+                present(route.cue, speech: route.prompt.speech, haptic: haptic, interrupt: signs.restricted)
+            }
     }
-}
-
-import AVFoundation
-import ImageIO
-private enum ImageThumbnail {
-    static func make(_ data: Data) -> UIImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil), let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways:true, kCGImageSourceCreateThumbnailWithTransform:true, kCGImageSourceThumbnailMaxPixelSize:900] as CFDictionary) else { return nil }
-        return UIImage(cgImage: image)
+    private func armExpiry() {
+        expiry?.cancel()
+        expiry = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(4)) } catch { return }
+            guard let self, self.canGuide, self.journey?.action == .atDestination else { return }
+            self.clearEvidence()
+            if let route=self.journey, self.live?.nav.current == nil || self.live?.allowsSignDirections == true { self.present(route.cue,speech:route.prompt.speech,interrupt:true) }
+        }
     }
 }

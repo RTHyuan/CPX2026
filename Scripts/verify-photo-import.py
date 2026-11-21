@@ -62,7 +62,7 @@ def verify(base):
         (run / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n')
         print(f"UI tests: {summary['passedTests']} passed, {summary['failedTests']} failed, {summary['skippedTests']} skipped", flush=True)
         result.check_returncode()
-        if summary['skippedTests'] or summary['passedTests'] < 6:
+        if summary['skippedTests'] or summary['passedTests'] < 8:
             raise SystemExit('The isolated picker test did not run. Inspect the result bundle.')
     finally:
         subprocess.run(SIMCTL + ['shutdown', device], check=False)

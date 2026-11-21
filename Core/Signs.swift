@@ -13,6 +13,12 @@ struct SignLine: Equatable {
     }
 }
 
+struct FrameResult: Equatable {
+    let lines: [SignLine]
+    let reading: SignReading
+    var scene = SceneClues()
+}
+
 enum Facility: String, CaseIterable {
     case lift = "电梯", exit = "出口", stairs = "楼梯", restroom = "洗手间"
 
@@ -27,7 +33,7 @@ enum Facility: String, CaseIterable {
 }
 
 enum Destination: Equatable {
-    case room(String), facility(Facility)
+    case room(String), facility(Facility), named(String)
 
     init?(_ input: String) {
         var value = SignParser.normalize(input).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -70,7 +76,7 @@ enum Destination: Equatable {
     }
 
     var text: String {
-        switch self { case .room(let value): return value; case .facility(let item): return item.rawValue }
+        switch self { case .room(let value), .named(let value): return value; case .facility(let item): return item.rawValue }
     }
 }
 
@@ -175,6 +181,10 @@ struct SignParser {
         let content = lines.joined(separator: " "), strongContent = strong.joined(separator: " ")
         let features = layout(lines)
         switch target {
+        case .named(let name):
+            let reference = normalize(name).filter { !$0.isWhitespace }
+            guard strong.contains(where: { $0.filter { !$0.isWhitespace } == reference }) else { return .unclear }
+            return SignReading(kind: features.directoryWords > 0 ? .directory : .mention, evidence: name)
         case .facility(let facility):
             guard namesFacility(facility, in: strongContent) else { return .unclear }
             if !matches(facilityRestriction, content).isEmpty {

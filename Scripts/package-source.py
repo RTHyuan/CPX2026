@@ -11,10 +11,18 @@ PUBLIC_FILES = (
     'PathSense.xcodeproj/xcshareddata/xcschemes/PathSense.xcscheme',
     'App/*.swift', 'App/Resources/Assets.xcassets/**/Contents.json',
     'App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png',
-    'App/Resources/Practice/*.png', 'App/Resources/SignContext.mlmodel',
+    'App/Resources/Practice/*.png', 'App/Resources/Practice/route-door.jpg', 'ASSET-CREDITS.md', 'App/Resources/SignContext.mlmodel',
     'Core/*.swift', 'Training/sign-layout.csv', 'Tests/PathSenseCoreTests/*.swift',
-    'UITests/*.swift', 'Scripts/*.swift', 'Scripts/*.sh', 'Scripts/*.py',
-    'docs/index.html', 'docs/media/*.jpg', 'docs/media/captions-*.vtt', 'docs/media/pathsense-demo.mp4', 'docs/media/field-signs.pdf',
+    'UITests/*.swift', 'Scripts/*.swift', 'Scripts/verify-vision.sh',
+    'Scripts/compose-poster.py', 'Scripts/exhibit_poster.py', 'Scripts/make-field-signs.py',
+    'Scripts/make-practice.py', 'Scripts/make-route-signs.py', 'Scripts/package-source.py',
+    'Scripts/publish-exhibit.py', 'Scripts/record-exhibit.py',
+    'docs/index.html', 'docs/wayfinding.md',
+    'docs/media/01-home.jpg', 'docs/media/home-dark.jpg', 'docs/media/navigation-dark.jpg',
+    'docs/media/route-01-door.jpg', 'docs/media/route-origin.jpg', 'docs/media/route-02-directory.jpg',
+    'docs/media/route-floor.jpg', 'docs/media/route-verify.jpg', 'docs/media/route-03-arrived.jpg',
+    'docs/media/captions-zh.vtt', 'docs/media/captions-en.vtt', 'docs/media/pathsense-demo.mp4',
+    'docs/media/field-signs.pdf', 'docs/media/pathsense-poster.pdf',
 )
 
 

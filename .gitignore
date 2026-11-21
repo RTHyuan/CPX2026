@@ -13,3 +13,4 @@ xcuserdata/
 /Submission/private/
 /output/*.zip
 /Submission/poster/
+__pycache__/

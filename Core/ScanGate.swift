@@ -22,6 +22,13 @@ struct ScanGate {
         saidUnclear = false
     }
 
+    /// Publish the interpretation together with its own source lines. Between votes,
+    /// a new sign may already be in the camera while the last confirmed cue is still visible.
+    mutating func confirmedFrame(_ sample: FrameResult, frame: UInt64, now: TimeInterval) -> FrameResult? {
+        guard let cue = ingest(sample.reading, frame: frame, now: now) else { return nil }
+        return cue == sample.reading ? sample : FrameResult(lines: [], reading: cue)
+    }
+
     mutating func ingest(_ reading: SignReading, frame: UInt64, now: TimeInterval) -> SignReading? {
         guard lastFrame.map({ frame > $0 }) ?? true, now >= startedAt else { return nil }
         lastFrame = frame

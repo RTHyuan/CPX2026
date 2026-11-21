@@ -1,7 +1,6 @@
-"""Produce the project PDF and project image from the official AMD original and matching Gallery proof."""
+"""Produce an A3 exhibit poster from the app screenshot, or compose an explicitly supplied AMD original and proof."""
 import argparse
 import hashlib
-import io
 import json
 from pathlib import Path
 from shutil import copyfile
@@ -22,11 +21,19 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--raw', type=Path, required=True, help='Original bytes downloaded from AMD Creative Factory')
-    parser.add_argument('--gallery', type=Path, required=True, help='Screenshot from Image → My work → Gallery containing the same work')
-    parser.add_argument('--out', type=Path, required=True, help='New output directory for the submission bundle')
+    root = Path(__file__).resolve().parents[1]
+    parser.add_argument('--screenshot', type=Path, help='Portrait capture of the target result. Defaults to the exhibit screenshot.')
+    parser.add_argument('--raw', type=Path, help='Original bytes downloaded from AMD Creative Factory')
+    parser.add_argument('--gallery', type=Path, help='Screenshot from Image → My work → Gallery containing the same work')
+    parser.add_argument('--out', type=Path, help='Output folder. Screenshot posters default to output/pdf.')
     parser.add_argument('--font', default='/System/Library/Fonts/STHeiti Medium.ttc', help='A Chinese TrueType/OpenType font')
     args = parser.parse_args()
+    if not (args.raw or args.gallery):
+        from exhibit_poster import build
+        build(args.screenshot or root / 'docs/media/route-02-directory.jpg', args.out or root / 'output/pdf', args.font)
+        return
+    if not (args.raw and args.gallery and args.out) or args.screenshot:
+        parser.error('The original/proof workflow takes --raw, --gallery and a new --out folder together.')
     if digest(args.raw) == digest(args.gallery):
         parser.error('Provide two distinct files: the original artwork and its matching Gallery screenshot.')
     with Image.open(args.raw) as original, Image.open(args.gallery) as proof:

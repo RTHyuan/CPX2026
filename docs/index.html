@@ -1,110 +1,18 @@
 <!doctype html>
-<html lang="zh-Hans">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="PathSense 用 iPhone 帮助低视力使用者核对室内标牌。观看有字幕的原型实录，查看不同房号、范围和目录的实际反馈。">
-  <title>PathSense · 室内标牌识读演示</title>
-  <style>
-    :root { color-scheme:light; --ink:#10362e; --muted:#445d53; --paper:#f6f6ed; --card:#fffef7; --line:#c6d3c4; --accent:#d9efa8; font-family:"Atkinson Hyperlegible Next",Inter,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
-    * { box-sizing:border-box; }
-    [hidden] { display:none !important; }
-    body { margin:0; color:var(--ink); background:var(--paper); font-size:1rem; line-height:1.65; }
-    a { color:inherit; text-underline-offset:.22em; }
-    a:focus-visible,button:focus-visible,video:focus-visible,summary:focus-visible { outline:3px solid #b6501d; outline-offset:4px; }
-    .skip { position:absolute; left:1rem; top:-8rem; background:var(--card); padding:.6rem; z-index:2; } .skip:focus { top:1rem; }
-    .wrap { width:min(100% - 2.25rem,68rem); margin-inline:auto; }
-    header { border-bottom:1px solid var(--line); }
-    nav { min-height:4.4rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.3rem 1.5rem; }
-    .wordmark { font-weight:800; letter-spacing:-.045em; font-size:1.4rem; text-decoration:none; }
-    nav a:not(.wordmark),summary { display:inline-flex; align-items:center; min-height:44px; }
-    .hero { display:grid; grid-template-columns:1.1fr .85fr; gap:clamp(2rem,6vw,5rem); align-items:center; padding-block:clamp(2rem,5vw,4.2rem); }
-    .kicker { display:block; font-size:.92rem; font-weight:700; color:var(--muted); margin:0 0 .7rem; }
-    h1,h2,h3,p,figure { margin:0; }
-    h1 { font-size:clamp(1.95rem,4.6vw,3.9rem); line-height:1.16; text-wrap:balance; letter-spacing:-.055em; margin-bottom:1.25rem; }
-    .lede { font-size:clamp(1.1rem,2.1vw,1.36rem); max-width:29em; }
-    .note { margin-top:1rem; color:var(--muted); max-width:43em; }
-    .action,.filelink { display:inline-flex; align-items:center; min-height:46px; margin-top:1.3rem; }
-    .action { font:inherit; font-weight:700; cursor:pointer; border:1px solid var(--ink); background:var(--ink); border-radius:.65rem; padding:.55rem 1.1rem; color:white; }
-    .filelink { margin-inline-start:1.1rem; }
-    .frame { background:#e2e9d9; border:1px solid var(--line); border-radius:1.4rem; padding:1.1rem 1.1rem .85rem; display:grid; justify-items:center; gap:.75rem; }
-    video { display:block; width:auto; height:min(33rem,65vh); max-width:100%; aspect-ratio:1206/2622; border-radius:1rem; background:#101f1c; }
-    video::cue { font-size:78%; }
-    figcaption, footer { color:var(--muted); font-size:.94rem; }
-    section { padding-block:2.1rem 2.5rem; border-top:1px solid var(--line); }
-    h2 { font-size:clamp(1.65rem,3.3vw,2.3rem); line-height:1.25; letter-spacing:-.04em; margin-bottom:1rem; }
-    h3 { font-size:1.15rem; line-height:1.35; margin-bottom:.45rem; }
-    .chapters { padding:0; margin:1.2rem 0 0; list-style:none; }
-    .chapters li { display:grid; grid-template-columns: minmax(9rem,1.05fr) minmax(8rem,2.15fr) auto; align-items:center; gap: .6rem 1.1rem; padding:.8rem .1rem; border-top:1px solid var(--line); }
-    .sign { font-weight:750; font-size:1.15rem; font-variant-numeric:tabular-nums; }
-    .chapters a { display:inline-flex; align-items:center; min-height:44px; }
-    .result { color:var(--muted); }
-    .info { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
-    .info article { padding:1.1rem; border:1px solid var(--line); border-radius:.8rem; background:var(--card); }
-    details { margin-top:1rem; } summary { display:list-item; cursor:pointer; padding:.45rem 0; font-weight:650; }
-    details p { max-width:65ch; color:var(--muted); } footer { padding:1rem 0 2rem; }
-    @media (max-width:45rem) { .hero,.info { grid-template-columns:1fr; } .hero { gap:1.4rem; } .frame { padding:.7rem; } video { height:min(31rem,65vh); } .chapters li { grid-template-columns:minmax(0,1fr) auto; } .result { grid-column:1; grid-row:auto; } .chapters a { grid-column:2; grid-row:span 2; } .chapters .sign { grid-column:1; } .chapters li { display:grid; grid-template-areas:"sign shot" "result shot"; } .sign { grid-area:sign; } .chapters .result {grid-area:result;} .chapters a {grid-area:shot;} }
-    @media (max-width:22rem) { .wrap { width:calc(100% - 1.4rem); } .filelink {margin-inline-start:.55rem;} }
-  </style>
-</head>
-<body>
-<a class="skip" href="#main">跳到演示</a>
-<header><nav class="wrap" aria-label="主导航"><a href="#main" class="wordmark" lang="en">PathSense</a><a href="#readings">查看标牌识读结果</a></nav></header>
-<main id="main" class="wrap">
-  <div class="hero">
-    <div>
-      <p class="kicker" lang="en">CrossPointX 2026 · Apple Human-Centered Care</p>
-      <h1>要找 305，<br>这块牌写了什么？</h1>
-      <p class="lede">低视力学生走到陌生的教学楼楼层，可以站定，告诉 iPhone 要找哪个房间，再举起手机核对眼前的标牌。</p>
-      <p class="note">这段约 18 秒的无声实录展示 iOS 模拟器里的照片模式。五张练习图逐张经过 Apple Vision 识字。播放器可切换中英文字幕。</p>
-      <button id="play" hidden type="button" class="action">播放演示</button><a class="filelink" href="media/pathsense-demo.mp4">打开原始录屏片段</a>
-    </div>
-    <figure class="frame">
-      <video id="demo" controls playsinline preload="metadata" poster="media/01-home.jpg" aria-label="PathSense 照片模式，约 18 秒" aria-describedby="demo-caption">
-        <source src="media/pathsense-demo.mp4" type="video/mp4">
-        <track kind="captions" srclang="zh-Hans" label="简体中文" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjAzLjM3MArpgInmi6nnhafniYfmqKHlvI/vvIznm67moIfmiL/lj7fkuLogMzA144CCCgowMDowMDowMy4zNzAgLS0+IDAwOjAwOjA2LjQ2MAozMDMg5piv5YW25LuW5oi/5Y+377yM57un57ut5p+l5om+IDMwNeOAggoKMDA6MDA6MDYuNDYwIC0tPiAwMDowMDowOC44NDAKMzAx4oCTMzEwIOi/meS4quiMg+WbtOWMheWQqyAzMDXjgIIKCjAwOjAwOjA4Ljg0MCAtLT4gMDA6MDA6MTEuOTEwCuivu+WIsCAzMDUw77yM5q2j5Zyo5om+IDMwNeOAggoKMDA6MDA6MTEuOTEwIC0tPiAwMDowMDoxNS42OTAK54us56uL5qCH54mM5LiK6K+75YiwIDMwNe+8jOivt+ehruiupOmXqOeJjOOAggoKMDA6MDA6MTUuNjkwIC0tPiAwMDowMDoxNy45NTAK5qW85bGC55uu5b2V5o+Q5YiwIDMwNe+8jOivt+WGjeaguOWvueeLrOeri+agh+ivhuOAggo=" default>
-        <track kind="captions" srclang="en" label="English" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjAzLjM3MApQaG90byBtb2RlLiBUaGUgdXNlciBpcyBsb29raW5nIGZvciByb29tIDMwNS4KCjAwOjAwOjAzLjM3MCAtLT4gMDA6MDA6MDYuNDYwCjMwMyBpcyBhIGRpZmZlcmVudCByb29tLiBLZWVwIGxvb2tpbmcgZm9yIDMwNS4KCjAwOjAwOjA2LjQ2MCAtLT4gMDA6MDA6MDguODQwClRoZSByYW5nZSAzMDHigJMzMTAgaW5jbHVkZXMgMzA1LgoKMDA6MDA6MDguODQwIC0tPiAwMDowMDoxMS45MTAKVGhlIHNpZ24gcmVhZHMgMzA1MC4gVGhlIHRhcmdldCBpcyAzMDUuCgowMDowMDoxMS45MTAgLS0+IDAwOjAwOjE1LjY5MApUaGUgc2lnbiByZWFkcyBST09NIDMwNS4gUGxlYXNlIHZlcmlmeSB0aGUgZG9vciBwbGF0ZS4KCjAwOjAwOjE1LjY5MCAtLT4gMDA6MDA6MTcuOTUwClRoZSBkaXJlY3RvcnkgbWVudGlvbnMgMzA1LiBDaGVjayB0aGUgaW5kaXZpZHVhbCBzaWduLgo=">
-        浏览器未能显示视频，请查看下方的逐段文字和截图。
-      </video>
-      <figcaption id="demo-caption">iPhone 模拟器录制 · 应用原画面 · 无音轨</figcaption>
-    </figure>
-  </div>
-  <section id="readings" aria-labelledby="reading-title">
-    <h2 id="reading-title">同一个目标，五种牌面</h2>
-    <p>首页点「用照片试一试」，默认查找 305。这是录屏中每张图片实际得到的结论。点「看截图」可放大阅读。</p>
-    <ol class="chapters">
-      <li><span class="sign">303</span><span class="result">读到三零三，正在找三零五。</span><a href="media/nearby.jpg" aria-label="看截图，其他房号 303">看截图</a></li>
-      <li><span class="sign">301–310</span><span class="result">这个范围包含目标号码，仍需核对独立门牌。</span><a href="media/span.jpg" aria-label="看截图，301 到 310 的范围牌">看截图</a></li>
-      <li><span class="sign">3050</span><span class="result">读到三零五零，正在找三零五。最后一个零保留下来。</span><a href="media/similar.jpg" aria-label="看截图，相似号码 3050">看截图</a></li>
-      <li><span class="sign">ROOM 305</span><span class="result">标识上读到三零五，请确认门牌。</span><a href="media/target.jpg" aria-label="看截图，独立房号 305">看截图</a></li>
-      <li><span class="sign">楼层目录</span><span class="result">目录里有 303、305、307。它只提示「这张目录提到三零五」。</span><a href="media/index.jpg" aria-label="看截图，楼层目录提及 305">看截图</a></li>
-    </ol>
-    <details><summary>换一张自己的门牌图试试</summary><p>在另一轮模拟器测试中，我们从系统相册选了一张新生成的 ROOM 418。目标设为 418 时，应用提示确认门牌。把目标改成 419 后，再选同一张图，屏幕显示「读到四一八，正在找四一九」。<a href="media/imported-418.jpg">查看从相册导入 418 的实际界面</a></p></details>
-    <details><summary>把牌面给 iPhone 扫</summary><p>用另一块屏幕全屏显示一页，或用 A4 横向单面打印。先把目标设为 305，依次扫 305 和 3050。再改找 0305 或 B217，让手机读第五、六页。<a href="media/field-signs.pdf">打开六张测试牌（PDF）</a></p></details>
-    <details><summary lang="en">English transcript</summary><p lang="en">The user chooses photo mode and looks for room 305. The iPhone reads 303, a different room. The range 301–310 includes 305. The next sign says 3050, also a different room. A standalone ROOM 305 sign prompts the user to verify the door plate. A directory listing 303, 305 and 307 only mentions the target. All five results come from OCR on the displayed images.</p></details>
-  </section>
-  <section aria-labelledby="how"><h2 id="how">在 iPhone 上使用</h2>
-    <div class="info">
-      <article><h3>选择目标</h3><p>输入房号，或选择电梯、楼梯、出口、洗手间。站定后对准附近的文字。</p></article>
-      <article><h3>听取线索</h3><p>连续扫描等待多帧一致。单次拍照和照片模式会说明结果来自单张图片。随时可重听或暂停。</p></article>
-      <article><h3>现场核对</h3><p>读到目标号码后，请结合现场门牌确认。行走、避障及疏散继续使用平常的出行辅助和现场指引。</p></article>
-    </div>
-    <p class="note">PathSense 1.0（构建 2）已在 iPhone Air（iOS 27.2.1）上启动。识读验证使用受控图片、打印牌面渲染图、合成相机帧和模拟器。走廊实拍、实际触觉、VoiceOver 听感及目标使用者反馈仍待记录。</p>
-  </section>
-</main>
-<footer class="wrap"><span lang="en">PathSense · SwiftUI / Vision / Core ML</span></footer>
-<script>
-  const demo = document.getElementById('demo');
-  const play = document.getElementById('play');
-  play.hidden = false;
-  play.addEventListener('click', () => {
-    if (!demo.paused && !demo.ended) { demo.pause(); return; }
-    demo.focus();
-    demo.play().catch(() => demo.focus());
-  });
-  demo.addEventListener('play', () => { play.textContent = '暂停演示'; });
-  demo.addEventListener('pause', () => { play.textContent = '继续播放'; });
-  demo.addEventListener('ended', () => { play.textContent = '再看一次'; });
-</script>
-</body>
-</html>
+<html lang="zh-Hans"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark">
+<title>PathSense · 室内寻路</title><meta name="description" content="用 iPhone 的持续后置镜头，沿着门牌、导览和楼层标识找到房号、科室或店铺。">
+<style>
+:root{color-scheme:light dark;--paper:#f5f5f7;--panel:white;--ink:#1d1d1f;--second:#54545a;--accent:#005abb;--rule:#d2d2d7;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC",sans-serif;line-height:1.6;color:var(--ink);background:var(--paper)}
+@media(prefers-color-scheme:dark){:root{--paper:#000;--panel:#1c1c1e;--ink:#f5f5f7;--second:#b9b9bf;--accent:#75baff;--rule:#3a3a3c}}
+*{box-sizing:border-box}body,figure,h1,h2,p{margin:0}header,.wrap{max-width:65rem;margin:auto;padding:0 1.3rem}nav{min-height:4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule)}.word{font-size:1.24rem;font-weight:700;letter-spacing:-.035em}a{color:var(--accent);text-underline-offset:.19em}nav a{color:var(--ink);text-decoration:none}a:focus-visible,video:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.hero{display:grid;grid-template-columns:1.12fr .72fr;gap:4vw;align-items:center;padding:2.6rem 0}.eyebrow,figcaption,.note{color:var(--second)}h1{font-size:clamp(2.35rem,6.4vw,4.7rem);line-height:1.1;letter-spacing:-.065em;margin:.55rem 0 1.25rem}h2{font-size:clamp(1.6rem,3vw,2.25rem);letter-spacing:-.035em}.lead{font-size:clamp(1.05rem,2.25vw,1.4rem);max-width:29em}.note{margin-top:.75rem;font-size:.96rem}.links{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;margin-top:1.4rem}.links a{padding:.5rem 0}.phone{text-align:center}.phone video{display:block;margin:auto;width:auto;height:min(60vh,30rem);max-width:100%;border-radius:26px;background:#111}.phone figcaption{margin:.6rem auto 0;font-size:.86rem}section{padding:2.1rem 0;border-top:1px solid var(--rule)}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1.15rem 0}.grid figure{background:var(--panel);border-radius:28px;padding:1rem}.grid img{width:100%;display:block;border-radius:16px}.grid figcaption{padding-top:.8rem}.grid strong{display:block;color:var(--ink);font-size:1.04rem}footer{padding:1rem 0 2rem;color:var(--second);font-size:.93rem}.skip{position:absolute;top:-8rem;z-index:2}.skip:focus{top:.7rem;background:var(--panel);padding:.4rem}@media(max-width:48rem){.hero{grid-template-columns:1fr;gap:1.6rem}.grid{grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))}.phone video{height:min(58vh,32rem)}}
+</style></head><body><a class="skip" href="#main">跳到演示</a>
+<header><nav aria-label="主导航"><span class="word" lang="en">PathSense</span><a href="#route">寻路过程</a></nav></header>
+<main id="main" class="wrap"><div class="hero"><div><p class="eyebrow" lang="en">CrossPointX 2026 · Apple Human-Centered Care</p><h1>室内寻路</h1><p class="lead">输入想去的房号、科室或店名。站定后转动 iPhone，手机会读出沿途的标识，提示下一步该找什么。</p><p class="note">这段模拟器录屏使用连续测试帧。输入 402 后，镜头依次扫过门、楼层目录、电梯和独立门牌。标牌文字和箭头由 App 实时识读。</p><div class="links"><a href="media/pathsense-demo.mp4">打开录屏</a><a href="media/pathsense-poster.pdf">查看 A3 海报</a></div></div>
+<figure class="phone"><video controls playsinline preload="metadata" poster="media/01-home.jpg" aria-label="持续扫描，从房间找到 402"><source src="media/pathsense-demo.mp4" type="video/mp4"><track kind="captions" srclang="zh-Hans" label="简体中文" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjA2LjAyMArovpPlhaUgNDAy77yM5byA5aeL5oyB57ut5omr5o+P44CCCgowMDowMDowNi4wMjAgLS0+IDAwOjAwOjA3Ljc3MArlj5HnjrDnlpHkvLzpl6jvvIzor7fmoLjlr7npl6jlj6PkuI7pgJrpgZPjgIIKCjAwOjAwOjA3Ljc3MCAtLT4gMDA6MDA6MTIuNDgwCumAmui/h+mXqOWQjueOr+mhvu+8jOWvu+aJvuWImue7j+i/h+eahOmXqOeJjOOAggoKMDA6MDA6MTIuNDgwIC0tPiAwMDowMDoyMS44MzAK6Zeo54mM5pivIDIwOOOAguWvu+aJvualvOWxguebruW9leOAggoKMDA6MDA6MjEuODMwIC0tPiAwMDowMDozMC44MzAK55uu5b2V5bCG55uu5qCH5YiX5Zyo5Zub5qW844CC5a+75om+55S15qKv5oyH56S644CCCgowMDowMDozMC44MzAgLS0+IDAwOjAwOjM4LjUyMArnlLXmoq/moIfor4bmnJ3lj7PjgILmoLjlr7nlkI7liY3lvoDlm5vmpbzjgIIKCjAwOjAwOjM4LjUyMCAtLT4gMDA6MDA6NDYuODcwCualvOWxgueJjOaYvuekuiA0Ru+8jOe7p+e7reayv+acrOWxguaMh+ekuuWvu+aJviA0MDLjgIIKCjAwOjAwOjQ2Ljg3MCAtLT4gMDA6MDA6NTUuNDMwCuacrOWxgueahOaMh+ekuueJjOacneW3pu+8jOe7p+e7reWvu+aJviA0MDLjgIIKCjAwOjAwOjU1LjQzMCAtLT4gMDA6MDA6NTcuMjgwCumVnOWktOWvueWHhiA0MDLvvIzmoLjlr7nni6znq4vpl6jniYzjgIIKCjAwOjAwOjU3LjI4MCAtLT4gMDA6MDA6NTkuMjU1CuS9v+eUqOiAheehruiupOWIsOi+vu+8jOaRhOWDj+WktOWBnOatouOAggo=" default><track kind="captions" srclang="en" label="English" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjA2LjAyMApFbnRlciByb29tIDQwMiBhbmQgc3RhcnQgY29udGludW91cyBzY2FubmluZy4KCjAwOjAwOjA2LjAyMCAtLT4gMDA6MDA6MDcuNzcwCkNoZWNrIHRoZSBwb3NzaWJsZSBkb29yd2F5IGFuZCB0aGUgcGFzc2FnZS4KCjAwOjAwOjA3Ljc3MCAtLT4gMDA6MDA6MTIuNDgwCkFmdGVyIHBhc3NpbmcgdGhyb3VnaCB0aGUgZG9vciwgbG9vayBmb3IgdGhlIHJvb20gcGxhdGUuCgowMDowMDoxMi40ODAgLS0+IDAwOjAwOjIxLjgzMApUaGUgc3RhcnRpbmcgcm9vbSBwbGF0ZSByZWFkcyAyMDguIExvb2sgZm9yIGEgZGlyZWN0b3J5LgoKMDA6MDA6MjEuODMwIC0tPiAwMDowMDozMC44MzAKVGhlIGRpcmVjdG9yeSBsaXN0cyB0aGUgZGVzdGluYXRpb24gb24gNEYuIExvb2sgZm9yIGEgbGlmdCBzaWduLgoKMDA6MDA6MzAuODMwIC0tPiAwMDowMDozOC41MjAKVGhlIGxpZnQgc2lnbiBwb2ludHMgcmlnaHQuIENoZWNrIHRoZSBsaWZ0IGFuZCB0cmF2ZWwgdG8gNEYuCgowMDowMDozOC41MjAgLS0+IDAwOjAwOjQ2Ljg3MApUaGUgbGFuZGluZyBzaWduIHJlYWRzIDRGLiBGb2xsb3cgdGhlIGNvcnJpZG9yIHNpZ25zIHRvIDQwMi4KCjAwOjAwOjQ2Ljg3MCAtLT4gMDA6MDA6NTUuNDMwClRoZSBjb3JyaWRvciBzaWduIHBvaW50cyBsZWZ0IHRvd2FyZCByb29tIDQwMi4KCjAwOjAwOjU1LjQzMCAtLT4gMDA6MDA6NTcuMjgwClNjYW4gYW5kIHZlcmlmeSB0aGUgc3RhbmRhbG9uZSA0MDIgcGxhdGUuCgowMDowMDo1Ny4yODAgLS0+IDAwOjAwOjU5LjI1NQpUaGUgdHJhdmVsZXIgY29uZmlybXMgYXJyaXZhbCBhbmQgdGhlIGNhbWVyYSBzdG9wcy4K"></video><figcaption>iPhone Air 模拟器 · 1.0（8）· 连续镜头回放<br><a href="media/01-home.jpg">浅色首页</a> · <a href="media/navigation-dark.jpg">深色导航</a></figcaption></figure></div>
+<section id="route"><h2>从房间找到 402</h2><div class="grid">
+<figure><a href="media/route-01-door.jpg"><img src="media/route-01-door.jpg" loading="lazy" alt="导航页提示镜头中央有疑似门，请核对通道。"></a><figcaption><strong>先找到门</strong>通过后环顾四周，读到并记住门牌 208。</figcaption></figure>
+<figure><a href="media/route-02-directory.jpg"><img src="media/route-02-directory.jpg" loading="lazy" alt="导航页读到目录中 401 至 420 在四楼。"></a><figcaption><strong>目录指向四楼</strong>找换层点，到站后核对楼层牌，再扫走廊的方向牌。</figcaption></figure>
+<figure><a href="media/route-03-arrived.jpg"><img src="media/route-03-arrived.jpg" loading="lazy" alt="使用者核对独立门牌并确认到达 402 后的完成页。"></a><figcaption><strong>核对独立门牌</strong>使用者确认目的地后，相机停止采集。</figcaption></figure></div></section>
+<section><h2>现场试用</h2><p>医院入口和商场使用同一个入口。输入现场科室或店名，扫目录中对应的一行。对同名条目，可按分区或楼层选择。路线线索不足时可以询问服务台。行走时请继续使用惯常的出行辅助。</p><div class="links"><a href="media/field-signs.pdf">教学楼、医院、商场展桌标牌（PDF）</a><a href="media/captions-zh.vtt">中文字幕</a><a href="media/captions-en.vtt" lang="en">English captions</a></div></section>
+</main><footer class="wrap">PathSense · SwiftUI / Vision / Core ML</footer></body></html>

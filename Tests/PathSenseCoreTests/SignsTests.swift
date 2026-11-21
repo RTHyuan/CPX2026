@@ -105,6 +105,19 @@ final class GateTests: XCTestCase {
         XCTAssertEqual(gate.ingest(room, frame: 10, now: 18), room)
         XCTAssertFalse(gate.shouldSignalSuccess(for: room))
     }
+    func testConfirmedCueKeepsItsOwnSourceText() {
+        var gate = ScanGate(now: 0)
+        let target = FrameResult(lines: [SignLine("ROOM"), SignLine("305")], reading: room)
+        let neighbor = FrameResult(lines: [SignLine("ROOM 3050")], reading: SignReading(kind: .neighbor, evidence: "3050"))
+        XCTAssertNil(gate.confirmedFrame(target, frame: 1, now: 0))
+        var visible = gate.confirmedFrame(target, frame: 2, now: 0.5)
+        visible = gate.confirmedFrame(neighbor, frame: 3, now: 1) ?? visible
+        XCTAssertEqual(visible, target)
+        XCTAssertEqual(gate.confirmedFrame(neighbor, frame: 4, now: 1.5), neighbor)
+        // A timer-generated unclear cue has no confirmed lines from the newly glimpsed sign.
+        XCTAssertEqual(gate.confirmedFrame(target, frame: 5, now: 10), FrameResult(lines: [], reading: .unclear))
+    }
+
     func testConfirmedNewSignImmediatelyReplacesTheOldSuccess() {
         var gate = ScanGate(now: 0)
         let lookalike = SignReading(kind: .neighbor, evidence: "3050")

@@ -9,11 +9,29 @@
 /* Begin PBXBuildFile section */
 		1045D66459FA6568D264EEFD /* UITests/PathSenseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90D563818CF0CC4A750592F /* UITests/PathSenseUITests.swift */; };
 		356D42E61CCAD9A5D3748E48 /* Core/ScanGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */; };
+		8A4B86C7E50B2CEB1C36C994 /* Core/PassageEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */; };
+		50CCBAC2F1777472B8DFC4E8 /* App/SimulatorEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */; };
+		71D3A6820F13286A4A78236D /* App/DeviceDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */; };
+		E57752AAEB3E6DA3C3AE8FDF /* App/LiveNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B3FBD0B37D18569A2C3BCC4 /* App/LiveNavigation.swift */; };
+		11DCD0CDC7C047137B7EFDD9 /* Core/LocalMaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA82362FBDD5296023F93EAB /* Core/LocalMaps.swift */; };
+		5A4EC1F3D8D2F358B0CF5B1A /* App/DestinationMicrophone.swift in Sources */ = {isa = PBXBuildFile; fileRef = 754625581DB54B3F8655AEF2 /* App/DestinationMicrophone.swift */; };
+		C48F94A7B6996C55DFAC8993 /* App/NearVision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804E9F4FF55371A18F7CE85A /* App/NearVision.swift */; };
+		4F4472564AD8CEB82B99A6B7 /* App/CloudClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 351ACC6AC00DE5CC3C38D9BE /* App/CloudClient.swift */; };
+		72015CEC820023BBFF1E0615 /* Core/CloudContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCCF25A83251C1A125E19E60 /* Core/CloudContract.swift */; };
+		2E661F26A40E4196956690CC /* Core/LocalRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6040BBC385F8A1528DC561A9 /* Core/LocalRoute.swift */; };
+		42988DC083C1A2EE58D47E4B /* Core/SpatialGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55402B3691EE9CD1CF5E7C2F /* Core/SpatialGeometry.swift */; };
+		EC7850111F94F5725F78756B /* App/JourneyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41039F5A45B690B89578B726 /* App/JourneyView.swift */; };
+		C20656CBD10CC10A9EE7FC10 /* App/RouteVision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B17623299AF8A5B880D449F /* App/RouteVision.swift */; };
+		9A26922A6270E88B1685D0A1 /* Core/WayfindingSigns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B269D06AEDD0129364416E4 /* Core/WayfindingSigns.swift */; };
+		A132ECB8FE409F13F200A675 /* Core/Wayfinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FF93E72795897508618EB39 /* Core/Wayfinding.swift */; };
+		3D6BB6C48B1349A58DF9E496 /* Core/GuidancePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B70BEF70D142239E9185AD /* Core/GuidancePrompt.swift */; };
 		4B196887550FE75F3DC2D2D0 /* App/PathSenseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98367EB7BD2688B9A29CC7B4 /* App/PathSenseApp.swift */; };
 		50503BA5F2C3A919FFB0DCDF /* App/Scanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE2C555EA1C6EF27BAFEBB1E /* App/Scanner.swift */; };
+		69E90B8434004C61AAE34EBC /* App/Feedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5DDA48054CF4907A3D21106 /* App/Feedback.swift */; };
 		6ED274FCB0820C2C129D1CDD /* App/Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 470C08A85A402ECACAD029FE /* App/Resources/Assets.xcassets */; };
 		7FA56D310FA6CC73CED80C86 /* App/Resources/Practice in Resources */ = {isa = PBXBuildFile; fileRef = E45A697CC9BE8FBCBF1B8499 /* App/Resources/Practice */; };
 		9794367A75CD5A4FA93771FB /* Core/Signs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90A11F2D63A5ED1BCEA54690 /* Core/Signs.swift */; };
+		F2C21F731E28472D9153F59A /* App/Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803FFEF42B28465998297010 /* App/Design.swift */; };
 		BA4DAF05CB73105357978A08 /* App/Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9720F86F5984AACA8FCA9A6C /* App/Views.swift */; };
 		C360E9EF0CDACF4BA778C0F1 /* App/Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD11368283FACE95D389948 /* App/Camera.swift */; };
 		CBD2EBE3987921336577A298 /* App/SignVision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109AFC6EBBB7C092041BA9B3 /* App/SignVision.swift */; };
@@ -37,11 +55,29 @@
 		56CE2F1DE8E6AD6CE5936396 /* App/Resources/SignContext.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = App/Resources/SignContext.mlmodel; sourceTree = SOURCE_ROOT; };
 		6890FE5EDA0A77D8E9B12D36 /* PathSenseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PathSenseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ScanGate.swift; sourceTree = SOURCE_ROOT; };
+		C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/PassageEvidence.swift; sourceTree = SOURCE_ROOT; };
+		2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SimulatorEvidence.swift; sourceTree = SOURCE_ROOT; };
+		97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/DeviceDiagnostics.swift; sourceTree = SOURCE_ROOT; };
+		9B3FBD0B37D18569A2C3BCC4 /* App/LiveNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/LiveNavigation.swift; sourceTree = SOURCE_ROOT; };
+		CA82362FBDD5296023F93EAB /* Core/LocalMaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/LocalMaps.swift; sourceTree = SOURCE_ROOT; };
+		754625581DB54B3F8655AEF2 /* App/DestinationMicrophone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/DestinationMicrophone.swift; sourceTree = SOURCE_ROOT; };
+		804E9F4FF55371A18F7CE85A /* App/NearVision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NearVision.swift; sourceTree = SOURCE_ROOT; };
+		351ACC6AC00DE5CC3C38D9BE /* App/CloudClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/CloudClient.swift; sourceTree = SOURCE_ROOT; };
+		BCCF25A83251C1A125E19E60 /* Core/CloudContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/CloudContract.swift; sourceTree = SOURCE_ROOT; };
+		6040BBC385F8A1528DC561A9 /* Core/LocalRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/LocalRoute.swift; sourceTree = SOURCE_ROOT; };
+		55402B3691EE9CD1CF5E7C2F /* Core/SpatialGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/SpatialGeometry.swift; sourceTree = SOURCE_ROOT; };
+		41039F5A45B690B89578B726 /* App/JourneyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/JourneyView.swift; sourceTree = SOURCE_ROOT; };
+		7B17623299AF8A5B880D449F /* App/RouteVision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/RouteVision.swift; sourceTree = SOURCE_ROOT; };
+		8B269D06AEDD0129364416E4 /* Core/WayfindingSigns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/WayfindingSigns.swift; sourceTree = SOURCE_ROOT; };
+		4FF93E72795897508618EB39 /* Core/Wayfinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Wayfinding.swift; sourceTree = SOURCE_ROOT; };
+		C8B70BEF70D142239E9185AD /* Core/GuidancePrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/GuidancePrompt.swift; sourceTree = SOURCE_ROOT; };
 		7553D71A0800E46172AEDEB1 /* PathSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PathSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		90A11F2D63A5ED1BCEA54690 /* Core/Signs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Signs.swift; sourceTree = SOURCE_ROOT; };
+		803FFEF42B28465998297010 /* App/Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/Design.swift; sourceTree = SOURCE_ROOT; };
 		9720F86F5984AACA8FCA9A6C /* App/Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/Views.swift; sourceTree = SOURCE_ROOT; };
 		98367EB7BD2688B9A29CC7B4 /* App/PathSenseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/PathSenseApp.swift; sourceTree = SOURCE_ROOT; };
 		CE2C555EA1C6EF27BAFEBB1E /* App/Scanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/Scanner.swift; sourceTree = SOURCE_ROOT; };
+		F5DDA48054CF4907A3D21106 /* App/Feedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/Feedback.swift; sourceTree = SOURCE_ROOT; };
 		D90D563818CF0CC4A750592F /* UITests/PathSenseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITests/PathSenseUITests.swift; sourceTree = SOURCE_ROOT; };
 		E45A697CC9BE8FBCBF1B8499 /* App/Resources/Practice */ = {isa = PBXFileReference; lastKnownFileType = folder; path = App/Resources/Practice; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -68,11 +104,29 @@
 			isa = PBXGroup;
 			children = (
 				6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */,
+				C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */,
+				2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */,
+				97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */,
+				9B3FBD0B37D18569A2C3BCC4 /* App/LiveNavigation.swift */,
+				CA82362FBDD5296023F93EAB /* Core/LocalMaps.swift */,
+				754625581DB54B3F8655AEF2 /* App/DestinationMicrophone.swift */,
+				804E9F4FF55371A18F7CE85A /* App/NearVision.swift */,
+				351ACC6AC00DE5CC3C38D9BE /* App/CloudClient.swift */,
+				BCCF25A83251C1A125E19E60 /* Core/CloudContract.swift */,
+				6040BBC385F8A1528DC561A9 /* Core/LocalRoute.swift */,
+				55402B3691EE9CD1CF5E7C2F /* Core/SpatialGeometry.swift */,
+				41039F5A45B690B89578B726 /* App/JourneyView.swift */,
+				7B17623299AF8A5B880D449F /* App/RouteVision.swift */,
+				8B269D06AEDD0129364416E4 /* Core/WayfindingSigns.swift */,
+				4FF93E72795897508618EB39 /* Core/Wayfinding.swift */,
+				C8B70BEF70D142239E9185AD /* Core/GuidancePrompt.swift */,
 				90A11F2D63A5ED1BCEA54690 /* Core/Signs.swift */,
 				1DD11368283FACE95D389948 /* App/Camera.swift */,
 				98367EB7BD2688B9A29CC7B4 /* App/PathSenseApp.swift */,
 				CE2C555EA1C6EF27BAFEBB1E /* App/Scanner.swift */,
+				F5DDA48054CF4907A3D21106 /* App/Feedback.swift */,
 				109AFC6EBBB7C092041BA9B3 /* App/SignVision.swift */,
+				803FFEF42B28465998297010 /* App/Design.swift */,
 				9720F86F5984AACA8FCA9A6C /* App/Views.swift */,
 				56CE2F1DE8E6AD6CE5936396 /* App/Resources/SignContext.mlmodel */,
 				470C08A85A402ECACAD029FE /* App/Resources/Assets.xcassets */,
@@ -173,7 +227,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				6ED274FCB0820C2C129D1CDD /* App/Resources/Assets.xcassets in Resources */,
-				7FA56D310FA6CC73CED80C86 /* App/Resources/Practice in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -181,6 +234,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7FA56D310FA6CC73CED80C86 /* App/Resources/Practice in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -192,11 +246,29 @@
 			buildActionMask = 2147483647;
 			files = (
 				356D42E61CCAD9A5D3748E48 /* Core/ScanGate.swift in Sources */,
+				8A4B86C7E50B2CEB1C36C994 /* Core/PassageEvidence.swift in Sources */,
+				50CCBAC2F1777472B8DFC4E8 /* App/SimulatorEvidence.swift in Sources */,
+				71D3A6820F13286A4A78236D /* App/DeviceDiagnostics.swift in Sources */,
+				E57752AAEB3E6DA3C3AE8FDF /* App/LiveNavigation.swift in Sources */,
+				11DCD0CDC7C047137B7EFDD9 /* Core/LocalMaps.swift in Sources */,
+				5A4EC1F3D8D2F358B0CF5B1A /* App/DestinationMicrophone.swift in Sources */,
+				C48F94A7B6996C55DFAC8993 /* App/NearVision.swift in Sources */,
+				4F4472564AD8CEB82B99A6B7 /* App/CloudClient.swift in Sources */,
+				72015CEC820023BBFF1E0615 /* Core/CloudContract.swift in Sources */,
+				2E661F26A40E4196956690CC /* Core/LocalRoute.swift in Sources */,
+				42988DC083C1A2EE58D47E4B /* Core/SpatialGeometry.swift in Sources */,
+				EC7850111F94F5725F78756B /* App/JourneyView.swift in Sources */,
+				C20656CBD10CC10A9EE7FC10 /* App/RouteVision.swift in Sources */,
+				9A26922A6270E88B1685D0A1 /* Core/WayfindingSigns.swift in Sources */,
+				A132ECB8FE409F13F200A675 /* Core/Wayfinding.swift in Sources */,
+				3D6BB6C48B1349A58DF9E496 /* Core/GuidancePrompt.swift in Sources */,
 				9794367A75CD5A4FA93771FB /* Core/Signs.swift in Sources */,
 				C360E9EF0CDACF4BA778C0F1 /* App/Camera.swift in Sources */,
 				4B196887550FE75F3DC2D2D0 /* App/PathSenseApp.swift in Sources */,
 				50503BA5F2C3A919FFB0DCDF /* App/Scanner.swift in Sources */,
+				69E90B8434004C61AAE34EBC /* App/Feedback.swift in Sources */,
 				CBD2EBE3987921336577A298 /* App/SignVision.swift in Sources */,
+				F2C21F731E28472D9153F59A /* App/Design.swift in Sources */,
 				BA4DAF05CB73105357978A08 /* App/Views.swift in Sources */,
 				D464D60ACDB6E9BA948ADC06 /* App/Resources/SignContext.mlmodel in Sources */,
 			);
@@ -227,11 +299,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COREML_CODEGEN_LANGUAGE = Swift;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 10;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = PathSense;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用后置摄像头在本机读取门牌与室内标识，帮助你查找目标。";
+				INFOPLIST_FILE = App/Navigation-Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "使用后置相机寻找门和过道，检查眼前障碍。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -253,7 +326,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 10;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -292,11 +365,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COREML_CODEGEN_LANGUAGE = Swift;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 10;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = PathSense;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用后置摄像头在本机读取门牌与室内标识，帮助你查找目标。";
+				INFOPLIST_FILE = App/Navigation-Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "使用后置相机寻找门和过道，检查眼前障碍。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -318,7 +392,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 10;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

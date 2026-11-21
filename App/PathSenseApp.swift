@@ -8,6 +8,9 @@ struct PathSenseApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(scanner: scanner)
+                #if DEBUG && !targetEnvironment(simulator)
+                .task { await scanner.diagnostics.run(scanner) }
+                #endif
                 .onChange(of: phase) { _, phase in
                     if phase == .background { scanner.background() }
                     if phase == .active { scanner.foreground() }

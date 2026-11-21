@@ -5,7 +5,7 @@ import ImageIO
 
 /// Render a synthetic sign on a neutral background. The buffer stays in the native rear
 /// sensor's landscape dimensions, including for portrait UI orientations.
-private func sensorBuffer(image: CIImage, orientation: CGImagePropertyOrientation, context: CIContext) throws -> CVPixelBuffer {
+func sensorBuffer(image: CIImage, orientation: CGImagePropertyOrientation, context: CIContext) throws -> CVPixelBuffer {
     let isPortrait = orientation == .left || orientation == .right
     let displaySize = isPortrait ? CGSize(width: 720, height: 1280) : CGSize(width: 1280, height: 720)
     let scale = min(displaySize.width / image.extent.width, displaySize.height / image.extent.height) * 0.86
@@ -24,7 +24,7 @@ private func sensorBuffer(image: CIImage, orientation: CGImagePropertyOrientatio
     return buffer
 }
 
-/// Exercise the same pixel-buffer OCR, temporal gate and haptic decision as live capture.
+/// Exercise the isolated pixel-buffer reader and its historical voting baseline.
 /// Test timestamps model independent frames. They do not measure hardware response time.
 func verifyCameraFrames(root: URL, reader: SignVision) throws -> Int {
     typealias Sample = (asset: String, time: Double, orientation: CGImagePropertyOrientation, reading: SignKind, delivery: SignKind?)
@@ -48,8 +48,10 @@ func verifyCameraFrames(root: URL, reader: SignVision) throws -> Int {
         let file = root.appendingPathComponent("App/Resources/Practice/\(sample.asset).png")
         guard let image = CIImage(contentsOf: file) else { throw CocoaError(.fileReadCorruptFile) }
         let buffer = try sensorBuffer(image: image, orientation: sample.orientation, context: context)
-        let frame = try reader.frame(buffer, orientation: sample.orientation, target: target)
-        let delivery = gate.ingest(frame.reading, frame: UInt64(index + 1), now: sample.time)
+        let frame = try reader.baselineFrame(buffer, orientation: sample.orientation, target: target)
+        let confirmed = gate.confirmedFrame(frame, frame: UInt64(index + 1), now: sample.time)
+        let delivery = confirmed?.reading
+        if let confirmed, confirmed.reading == frame.reading, confirmed.lines != frame.lines { failures += 1 }
         if let delivery, gate.shouldSignalSuccess(for: delivery) { hapticCount += 1 }
         let passed = frame.reading.kind == sample.reading && delivery?.kind == sample.delivery
         if !passed { failures += 1 }
