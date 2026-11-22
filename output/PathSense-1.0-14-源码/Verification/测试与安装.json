@@ -1,0 +1,83 @@
+{
+  "日期": "2026-11-22",
+  "构建号": 14,
+  "本版测试": {
+    "核心": {
+      "执行": 147,
+      "跳过": 0,
+      "失败": 0,
+      "通过": true
+    },
+    "代理与协议": {
+      "执行": 16,
+      "跳过": 0,
+      "失败": 0,
+      "通过": true
+    }
+  },
+  "本版构建及设备": {
+    "模拟器Debug构建": "通过",
+    "签名Release构建": "通过",
+    "iPhone 17 Pro安装查询": "通过",
+    "iPhone 17 Pro启动回执": "通过"
+  },
+  "本版陪同实走": "未取得记录",
+  "既有验证": {
+    "日期": "2026-11-22",
+    "构建13": {
+      "安装": {
+        "机型": "iPhone 17 Pro",
+        "系统": "27.2.1",
+        "版本": "1.0",
+        "构建号": 13,
+        "模拟器Debug构建": "通过",
+        "签名Release构建": "通过",
+        "安装查询": "成功",
+        "启动回执": "成功"
+      },
+      "代理及协议": {
+        "执行": 16,
+        "失败": 0
+      }
+    },
+    "构建13之前": {
+      "Mac核心用例": {
+        "执行": 147,
+        "失败": 0,
+        "包含现场像素测试": true
+      },
+      "较早版本的Pro模拟器界面测试": {
+        "执行总数": 20,
+        "通过": 12,
+        "失败": 7,
+        "跳过": 1,
+        "失败用例": [
+          "testConsentAndDelayedProxyTurnUsesLatestCameraHeading",
+          "testDoorDetourReacquisitionFromHomeThroughArrival",
+          "testExhibitWalkthrough",
+          "testFieldDoorDetourReacquisitionThroughArrival",
+          "testFieldMockRelayRemembersElevatorPictogram",
+          "testFieldPublicAreaRaisedPhoneReadsPlateAndPersonPreempts",
+          "testFieldStaffOnlySignWithUnknownGround"
+        ],
+        "后续整套通过记录": false
+      },
+      "早期真机静置观测": {
+        "位姿数": 674,
+        "近场检查数": 98,
+        "关键观察数": 19,
+        "普通话结束回调": true,
+        "对准与双震回调": [
+          "alignment",
+          "stop-first",
+          "stop-second"
+        ],
+        "另一轮近场检查数": 586,
+        "收到深度和置信图的次数": 583,
+        "前方判为未知次数": 586,
+        "前方判为可通行次数": 0,
+        "发出前进指令": false
+      }
+    }
+  }
+}

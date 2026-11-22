@@ -1,0 +1,154 @@
+[
+  {
+    "source": "视频-rtr1.mp4",
+    "frame": "rtr1-70.2.jpg",
+    "sha256": "edcb5a3e0d0da65771364d16694a1ef3abd786ad07958525928be23310c8a82c",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 6316515,
+      "seconds": 70.1835,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 702,
+      "seconds": 70.2,
+      "timescale": 10
+    }
+  },
+  {
+    "source": "视频-rtr2.mp4",
+    "frame": "rtr2-10.6.jpg",
+    "sha256": "654ffcd13eae18010edb63a5c34a5792f09d296604c91f063fa034c6d8e85421",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 954000,
+      "seconds": 10.6,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 106,
+      "seconds": 10.6,
+      "timescale": 10
+    }
+  },
+  {
+    "source": "视频-rtr2.mp4",
+    "frame": "rtr2-51.5.jpg",
+    "sha256": "02d5ec10e86bd5574babaf75b5585ccf354d91ef7c54de255c9435103b8969f5",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 4635000,
+      "seconds": 51.5,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 515,
+      "seconds": 51.5,
+      "timescale": 10
+    }
+  },
+  {
+    "source": "视频-rtr1.mp4",
+    "frame": "rtr1-66.0.jpg",
+    "sha256": "80cf4672e5aef45d5d6a043cecaab3036e3239cbf766087724ced8e45cb5fd10",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 5938515,
+      "seconds": 65.9835,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 660,
+      "seconds": 66,
+      "timescale": 10
+    }
+  },
+  {
+    "source": "视频-rtr2.mp4",
+    "frame": "rtr2-33.7.jpg",
+    "sha256": "8020e41f94468f6f28f54c067e1501e874c6a7a0f9d3d9b37a69b49b9e3d8a28",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 3033000,
+      "seconds": 33.7,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 337,
+      "seconds": 33.7,
+      "timescale": 10
+    }
+  },
+  {
+    "source": "视频-rtr2.mp4",
+    "frame": "rtr2-25.5.jpg",
+    "sha256": "75824db816f18d9b6603a2822564c63246ec06874122d9b372a06b7c10cefca9",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 2295000,
+      "seconds": 25.5,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 255,
+      "seconds": 25.5,
+      "timescale": 10
+    }
+  },
+  {
+    "source": "视频-rtr1.mp4",
+    "frame": "rtr1-12.0.jpg",
+    "sha256": "ca7f154fb908745a362725a1afbf9f7c289a3e8bcc7b23089741e79efcaa122e",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 1080000,
+      "seconds": 12,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 120,
+      "seconds": 12,
+      "timescale": 10
+    }
+  },
+  {
+    "source": "视频-rtr1.mp4",
+    "frame": "rtr1-32.0.jpg",
+    "sha256": "e33923e50523f299a88bae5c9b1a7d6630ae51991e995d7d68eff3be8f8b2427",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "actual": {
+      "value": 2880006,
+      "seconds": 32.00006666666667,
+      "timescale": 90000
+    },
+    "requested": {
+      "value": 320,
+      "seconds": 32,
+      "timescale": 10
+    }
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "archive": "./output/PathSense-1.0-19-源码.zip",
+  "fileCount": 158,
+  "bytes": 8145082,
+  "sha256": "1d8090af673be109fef60e5e49ea69e8bf077565deedbd024fc8feed9b13a268",
+  "integrity": "passed",
+  "allSourceHashesMatch": true,
+  "projectReferences": 44,
+  "missingProjectReferences": [],
+  "privateInputsExcluded": true,
+  "sourceCommentOnly": [
+    "Core/GuidanceLanguage.swift"
+  ]
+}

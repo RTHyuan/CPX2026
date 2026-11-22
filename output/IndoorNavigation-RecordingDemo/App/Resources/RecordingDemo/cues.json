@@ -1,0 +1,121 @@
+[
+  {
+    "id": 1,
+    "time": 0,
+    "scene": "An open wooden doorway leads into a bright hall.",
+    "instruction": "Move forward into the hall.",
+    "audio": "cue-001.caf"
+  },
+  {
+    "id": 2,
+    "time": 7,
+    "scene": "Room signs are ahead, beside a white kiosk.",
+    "instruction": "Turn right to check the signs.",
+    "audio": "cue-002.caf"
+  },
+  {
+    "id": 3,
+    "time": 16,
+    "scene": "Restroom signs lead into the corridor on your right.",
+    "instruction": "Turn right toward the restroom signs.",
+    "audio": "cue-003.caf"
+  },
+  {
+    "id": 4,
+    "time": 23,
+    "scene": "The accessible restroom is beside the yellow door.",
+    "instruction": "Turn around toward the main hall.",
+    "audio": "cue-004.caf"
+  },
+  {
+    "id": 5,
+    "time": 31,
+    "scene": "The main hall stretches ahead, with seats along the side.",
+    "instruction": "Continue forward along the hall.",
+    "audio": "cue-005.caf"
+  },
+  {
+    "id": 6,
+    "time": 40,
+    "scene": "A wide open space leads toward the bright windows.",
+    "instruction": "Keep moving forward at a steady pace.",
+    "audio": "cue-006.caf"
+  },
+  {
+    "id": 7,
+    "time": 49,
+    "scene": "An overhead sign marks the way across the lobby.",
+    "instruction": "Continue toward the sign.",
+    "audio": "cue-007.caf"
+  },
+  {
+    "id": 8,
+    "time": 58,
+    "scene": "The hall opens up, with large columns on the right.",
+    "instruction": "Keep slightly left of the columns.",
+    "audio": "cue-008.caf"
+  },
+  {
+    "id": 9,
+    "time": 65,
+    "scene": "A cleaner is working ahead near the flags.",
+    "instruction": "Slow down as you pass the cleaner.",
+    "audio": "cue-009.caf"
+  },
+  {
+    "id": 10,
+    "time": 77,
+    "scene": "A corridor entrance is beside the flag display.",
+    "instruction": "Turn right into the corridor.",
+    "audio": "cue-010.caf"
+  },
+  {
+    "id": 11,
+    "time": 86,
+    "scene": "A row of lifts is on your left.",
+    "instruction": "Continue past the lifts.",
+    "audio": "cue-011.caf"
+  },
+  {
+    "id": 12,
+    "time": 94,
+    "scene": "White lockers line a narrower passage ahead.",
+    "instruction": "Follow the passage between the lockers.",
+    "audio": "cue-012.caf"
+  },
+  {
+    "id": 13,
+    "time": 103,
+    "scene": "The locker passage turns beside a wooden door.",
+    "instruction": "Follow the bend in the locker passage.",
+    "audio": "cue-013.caf"
+  },
+  {
+    "id": 14,
+    "time": 112,
+    "scene": "A ground-floor directory stands beside the lockers.",
+    "instruction": "Continue toward the room entrances.",
+    "audio": "cue-014.caf"
+  },
+  {
+    "id": 15,
+    "time": 121,
+    "scene": "This is BSG35, the stationery room.",
+    "instruction": "Turn back toward the lockers.",
+    "audio": "cue-015.caf"
+  },
+  {
+    "id": 16,
+    "time": 128,
+    "scene": "A trolley is ahead.",
+    "instruction": "Pass on its right.",
+    "audio": "cue-016.caf"
+  },
+  {
+    "id": 17,
+    "time": 132,
+    "scene": "The double doors are marked BSG33.",
+    "instruction": "Stop here. You have reached the doorway.",
+    "audio": "cue-017.caf"
+  }
+]

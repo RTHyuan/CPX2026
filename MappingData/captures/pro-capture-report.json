@@ -1,0 +1,10 @@
+{
+  "cameraState" : "interrupted",
+  "coordinateFrame" : "ARKit session, metres; not registered to a floor plan",
+  "landmarkCount" : 1,
+  "normalFrames" : 100,
+  "pathCount" : 3,
+  "pointCount" : 212,
+  "pointSource" : "lidar_depth",
+  "sensorOnly" : true
+}

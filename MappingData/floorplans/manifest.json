@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "collection": "User-provided BS building floor directory scans",
+  "verified_on": "2026-11-22",
+  "verification": "All three originals visually inspected; pixel dimensions read locally; copies verified byte-for-byte by SHA-256.",
+  "asset_kind": "real_floor_directory_scan",
+  "building_name": null,
+  "building_code_evidence": "BS room-label prefixes and source filenames; the formal building name is not established by these scans.",
+  "source_directory": "照片",
+  "coordinate_system": {
+    "units": "image_pixels",
+    "origin": "top_left_of_unchanged_source_raster",
+    "x_direction": "right",
+    "y_direction": "down"
+  },
+  "registration": {
+    "status": "not_calibrated",
+    "meters_per_pixel": null,
+    "image_to_ar_transform": null,
+    "north_to_ar_heading_degrees": null
+  },
+  "you_are_here_meaning": "The red star marks the original directory board location, not the live phone pose.",
+  "image_path_base": "manifest_directory",
+  "floors": [
+    {
+      "id": "bs-level-g",
+      "source_relative_path": "照片/BS-G-扫描.jpg",
+      "floor_label": "G",
+      "visible_floor_title": "LEVEL G",
+      "room_label_prefix": "BSG",
+      "visually_checked_room_examples": [
+        "BSG02",
+        "BSG38",
+        "BSG40"
+      ],
+      "content_type": "image/jpeg",
+      "width_pixels": 2064,
+      "height_pixels": 2780,
+      "byte_length": 772410,
+      "sha256": "2978bcefeffe16e4707204cf3437e651e025eb187bc7da404ebaca09f63e73ab",
+      "unchanged_from_source": true,
+      "visible_features": [
+        "room_labels",
+        "room_outlines",
+        "corridors_or_halls",
+        "elevators",
+        "toilets",
+        "stairs",
+        "emergency_exit_symbols",
+        "north_arrow",
+        "you_are_here_marker"
+      ],
+      "has_measured_metric_scale": false,
+      "has_session_registration": false,
+      "image_quality_notes": [
+        "Photographed/scanned physical directory with reflections and perspective distortion.",
+        "Some labels are small, obscured, or affected by glare; a complete transcription has not been performed."
+      ],
+      "label": "LEVEL G",
+      "title": "BS · LEVEL G",
+      "image": "BS-G-扫描.jpg",
+      "rotation": -90,
+      "source": "照片/BS-G-扫描.jpg"
+    },
+    {
+      "id": "bs-level-1",
+      "source_relative_path": "照片/BS-1-扫描.jpg",
+      "floor_label": "1",
+      "visible_floor_title": "LEVEL 1",
+      "room_label_prefix": "BS1",
+      "visually_checked_room_examples": [
+        "BS102",
+        "BS107",
+        "BS146",
+        "BS155"
+      ],
+      "content_type": "image/jpeg",
+      "width_pixels": 2252,
+      "height_pixels": 2992,
+      "byte_length": 799781,
+      "sha256": "7af0359c25e008e67f22b673d4e5a3bf450e38fa15751385584df224c6b99393",
+      "unchanged_from_source": true,
+      "visible_features": [
+        "room_labels",
+        "room_outlines",
+        "corridors_or_halls",
+        "elevators",
+        "toilets",
+        "stairs",
+        "emergency_exit_symbols",
+        "north_arrow",
+        "you_are_here_marker"
+      ],
+      "has_measured_metric_scale": false,
+      "has_session_registration": false,
+      "image_quality_notes": [
+        "Photographed/scanned physical directory with reflections and perspective distortion.",
+        "Some labels are small, obscured, or affected by glare; a complete transcription has not been performed."
+      ],
+      "label": "LEVEL 1",
+      "title": "BS · LEVEL 1",
+      "image": "BS-1-扫描.jpg",
+      "rotation": -90,
+      "source": "照片/BS-1-扫描.jpg"
+    },
+    {
+      "id": "bs-level-2",
+      "source_relative_path": "照片/BS-2-扫描.jpg",
+      "floor_label": "2",
+      "visible_floor_title": "LEVEL 2",
+      "room_label_prefix": "BS2",
+      "visually_checked_room_examples": [
+        "BS205",
+        "BS215",
+        "BS241"
+      ],
+      "content_type": "image/jpeg",
+      "width_pixels": 2344,
+      "height_pixels": 3032,
+      "byte_length": 864596,
+      "sha256": "e0449c404e399401dbad12d8df97cee69ab157d31e1b04938a1f071d23ce895e",
+      "unchanged_from_source": true,
+      "visible_features": [
+        "room_labels",
+        "room_outlines",
+        "corridors_or_halls",
+        "elevators",
+        "toilets",
+        "stairs",
+        "emergency_exit_symbols",
+        "north_arrow",
+        "you_are_here_marker"
+      ],
+      "has_measured_metric_scale": false,
+      "has_session_registration": false,
+      "image_quality_notes": [
+        "Photographed/scanned physical directory with reflections and perspective distortion.",
+        "Some labels are small, obscured, or affected by glare; a complete transcription has not been performed."
+      ],
+      "label": "LEVEL 2",
+      "title": "BS · LEVEL 2",
+      "image": "BS-2-扫描.jpg",
+      "rotation": -90,
+      "source": "照片/BS-2-扫描.jpg"
+    }
+  ]
+}

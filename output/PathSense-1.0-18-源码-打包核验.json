@@ -1,0 +1,13 @@
+{
+  "archive": "PathSense-1.0-18-源码.zip",
+  "files": 140,
+  "sizeBytes": 5656675,
+  "sha256": "52cf54174e5f2c67787c5d384b291e65a6ba325e8b81742ae13575c1ab9b3169",
+  "integrity": "passed",
+  "allPackagedFilesMatchWorkspace": true,
+  "projectReferencesPresent": 43,
+  "commentOccurrences": [
+    "Core/GuidanceLanguage.swift"
+  ],
+  "privateFilesExcluded": true
+}

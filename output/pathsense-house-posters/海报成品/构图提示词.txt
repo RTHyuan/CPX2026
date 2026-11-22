@@ -1,0 +1,19 @@
+PathSense 海报构图 · 内置 ImageGen
+
+两张成品通过独立排版输出，水印使用已确认的透明图标原件。
+
+【横版】
+Use case: ads-marketing. Create one finished 16:9 landscape poster for PathSense, a minimal indoor accessibility campaign in the typographic style of a clean Apple product page. Absolutely white (#FFFFFF) background, edge to edge. Reference image is the approved final transparent PathSense house + open-arm human + speaker symbol; treat it as a locked placed asset; preserve its exact geometry, rounded stroke, speaker, and proportions. Put it on the right as a large pale neutral gray watermark (around ten percent ink), with the roof, arms and sound icon visible. Align the copy to the left on a deliberate clean editorial grid around 9% in. Make the product label quiet and small, the main headline two prominent closely spaced lines of SF Pro Display-like near-black semibold with careful real word spaces and optical kerning, and the one-line subhead in a medium dark gray of comfortable size. Allow just enough layering that the pale house reads as a watermark behind the far end of the title; the final periods remain clearly separated from any contour. Use exactly these four lines in exactly this order, with three standard English full stops and no period after the brand:
+PathSense
+The signs are there.
+Now hear them.
+Find your way inside unfamiliar buildings.
+Balanced whitespace on all sides. Strong product-hero typography, no additional words or decorative lines, hardware, photos, QR code, gradient, badges, or rounded-rectangle plate. Flat full frame graphic art, not a framed or photographed mockup.
+
+【竖版】
+Use case: ads-marketing. One standalone tall 9:16 phone poster for the PathSense indoor wayfinding campaign. A considered minimal Apple product-page aesthetic, white #FFFFFF canvas edge to edge, with precise centered English typography. Place the approved glyph from the given transparent reference verbatim, as a much-enlarged ghosted neutral gray watermark occupying the upper middle of the composition. Keep its exact soft pentagonal roof, open-armed person and left speaker with two waves. Approximately 9–10% ink on white. Let the roof and the person's head read in the white space above the headline; allow the very bottom edge of the symbol to sit behind only part of the main type. The logo must be recognizable, headline is primary. One quiet small product name, then generous breathing room, a large near-black semi-bold SF Pro Display two-line headline with the first sentence all on a single line, then a smaller dark gray SF Pro Text-style one-sentence supporting line below. Center the text optically, keep 8–10% side margins and generous top and bottom white space, composed specifically for portrait. Exact English lines in reading order:
+PathSense
+The signs are there.
+Now hear them.
+Find your way inside unfamiliar buildings.
+No quotation marks. Three conventional period glyphs MUST be present. No further text, URL, icon tiles, colored highlights, background texture, product mockup, drop shadow, or QR code. A calm typographic hero and a single faint symbol on flat pure white.

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "floor": "2F",
+  "nodes": [
+    {"id":"a", "x":0, "z":0, "label":"208"},
+    {"id":"b", "x":3, "z":0, "label":"210"},
+    {"id":"d", "x":3, "z":3, "goal":"402"}
+  ],
+  "edges": [
+    {"a":"a", "b":"d", "accessible":false},
+    {"a":"a", "b":"b", "accessible":true},
+    {"a":"b", "b":"d", "accessible":true}
+  ]
+}

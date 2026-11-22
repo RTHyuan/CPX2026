@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>室内寻路 · Mac 地图查看器</title>
+<style>
+:root{color-scheme:light;--blue:#1767d2;--line:#dbe1e9;--muted:#647286}*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#172334;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{padding:20px 25px 15px;background:white;border-bottom:1px solid var(--line)}h1{font-size:23px;margin:0 0 7px}p{margin:7px 0;line-height:1.55}.muted{color:var(--muted)}.warning{color:#7b5318;background:#fff4dd;border:1px solid #f2dfb9;border-radius:10px;padding:9px 12px;margin-top:12px}main{display:grid;grid-template-columns:290px 1fr;gap:16px;padding:16px;height:calc(100vh - 151px);min-height:580px}aside{overflow:auto;background:white;border:1px solid var(--line);border-radius:14px;padding:17px}section+section{border-top:1px solid var(--line);margin-top:18px;padding-top:15px}h2{font-size:15px;margin:0 0 12px}label{display:block;margin:10px 0 6px}button,.filebutton,select,input[type=number]{font:inherit;border:1px solid #bdc9d8;border-radius:8px;background:white;padding:8px 10px;color:inherit}button,.filebutton{cursor:pointer}button:hover,.filebutton:hover{background:#edf4ff}button.primary{background:var(--blue);color:white;border-color:var(--blue)}.filebutton{display:block;text-align:center}.filebutton input{display:none}select{width:100%}input[type=number]{width:78px;padding:5px}input[type=range]{width:100%}.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.row label{margin:0}.small{font-size:12px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.metric{background:#f3f6fb;padding:10px;border-radius:9px}.metric b{display:block;font-size:22px;font-variant-numeric:tabular-nums}.stage{display:flex;flex-direction:column;min-width:0;border:1px solid var(--line);border-radius:14px;background:white;overflow:hidden}.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:11px;border-bottom:1px solid var(--line)}.toolbar button.active{color:white;background:var(--blue);border-color:var(--blue)}.toolbar .spacer{flex:1}#viewport{position:relative;flex:1;min-height:360px;overflow:hidden;background:#f8fafc}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}#empty{position:absolute;pointer-events:none;left:50%;top:48%;transform:translate(-50%,-50%);max-width:430px;text-align:center;color:#738095;line-height:1.8}#empty b{font-size:19px;color:#3c4c63}.caption{padding:10px 13px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);line-height:1.5}#status{overflow-wrap:anywhere}#floorControls{display:none}.legend span{display:inline-block;margin-right:10px}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}a{color:var(--blue)}@media(max-width:800px){main{height:auto;display:flex;flex-direction:column;padding:10px}aside{overflow:visible}.stage{height:65vh;min-height:480px}header{padding:16px}section{margin-top:12px} .metrics{margin:8px 0}}
+</style>
+<header><h1>室内寻路 · Mac 地图查看器</h1><p class="muted">导入 iPhone 实际导出的 JSON，查看 VIO 轨迹、定位地标与可选点云。数据留在本机，无需第三方网页服务。</p><p class="warning">AR 局部坐标与扫描楼层图<strong>未自动配准</strong>。轨迹是已记录的位置，点云是观测点；二者均不表示可通行路线。</p></header>
+<main>
+<aside>
+<section><h2>1 · 导入实际数据</h2><label class="filebutton">选择 App 地图 JSON<input id="jsonFile" type="file" accept=".json,application/json"></label><p class="small muted">可直接双击本 HTML 离线导入。不会自动生成或补全地图。</p><label><input id="follow" type="checkbox"> 跟随 Mac 文件 / HTTP 接收</label><div id="serverFiles" hidden><select id="fileSelect" aria-label="Mac 导出文件"><option value="">跟随服务器最新数据</option></select></div><p id="status" class="small muted" role="status">尚未导入数据。</p><div class="metrics"><div class="metric"><b id="pathCount">0</b>VIO 轨迹点</div><div class="metric"><b id="pointCount">0</b>观测点</div></div><p id="landmarkCount" class="small muted">0 个定位地标</p><p id="source" class="small muted">点云来源：未提供</p><button id="download">导出当前 JSON</button></section>
+<section><h2>2 · 扫描楼层底图</h2><select id="floorSelect" aria-label="楼层底图"><option value="">请选择楼层 / 导入图片</option></select><label class="filebutton">导入其它底图图片<input id="imageFile" type="file" accept="image/*"></label><p id="floorSource" class="small muted">底图是扫描图片，不包含自动识别的坐标关系。</p><div id="floorControls"><label><input id="overlay" type="checkbox"> 叠加 AR 轨迹（手动预览）</label><div class="row"><label>像素/米 <input id="planScale" type="number" value="40" min="1" max="1000"></label><label>旋转° <input id="planRotation" type="number" value="0" step="5"></label></div><div class="row" style="margin-top:8px"><label>偏移 X <input id="planX" type="number" value="0" step="10"></label><label>偏移 Y <input id="planY" type="number" value="0" step="10"></label></div><p class="small muted">以底图中心放置 AR 原点。参数仅改变显示，不能证明定位或完成配准。</p></div></section>
+<section><h2>显示</h2><label><input id="showPoints" type="checkbox" checked> 点云</label><label><input id="showLabels" type="checkbox" checked> 地标标签</label><label>点大小 <input id="pointSize" type="range" min="1" max="5" step="0.5" value="2"></label><p class="small muted">平面 / 底图：拖动平移，滚轮缩放。<br>三维：拖动旋转，Shift + 拖动平移，滚轮缩放。</p><p class="small muted">坐标单位：米；AR 俯视图右方为 +X，下方为 +Z。三维颜色表示相对高度。</p></section>
+</aside>
+<div class="stage"><div class="toolbar"><button data-mode="top" class="active">局部平面</button><button data-mode="cloud">三维点云</button><button data-mode="floor">扫描楼层图</button><span class="spacer"></span><button id="fit">适合画面</button><button id="reset">清空数据</button></div><div id="viewport"><canvas id="canvas" aria-label="局部轨迹和观测点可视化"></canvas><div id="empty"><b>等待真实地图数据</b><br>选择手机导出的 JSON；若文件不含 points，<br>只显示已有轨迹和地标，不生成点云。</div></div><div class="caption"><div class="legend"><span><i style="background:#1767d2"></i>VIO 轨迹</span><span><i style="background:#ed8725"></i>定位地标</span><span><i style="background:#27a88b"></i>观测点</span></div><span id="detail">各 AR 会话独立；跟踪坐标重置时实时累积会清空。</span></div></div>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas = $('canvas'), ctx = canvas.getContext('2d');
+let snapshot = {path:[],landmarks:[],points:[]}, mode = 'top', floorImage = null;
+let width = 1, height = 1, dpr = 1, scale = 45, panX = 0, panY = 0, center = [0,0,0];
+let yaw = -.5, pitch = .75, serverRevision = -1, busy = false, needsFit = true, floors = [];
+let drag = null, objectURL = null;
+const finite = v => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1e6;
+const v3 = v => Array.isArray(v) ? (v.length === 3 && v.every(finite) ? v : null) : (v && ['x','y','z'].every(k=>finite(v[k])) ? [v.x,v.y,v.z] : null);
+function posePosition(p) { return v3(p?.position) || (p?.transform?.length === 16 ? v3(p.transform.slice(12,15)) : null); }
+function setStatus(message, error=false) { $('status').textContent=message; $('status').style.color=error?'#b42727':''; }
+function normalize(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw Error('JSON 必须为地图对象。');
+  const obj=raw.snapshot ?? raw;
+  if (!obj || typeof obj !== 'object' || !Array.isArray(obj.path)) throw Error('未找到 App 的 path 数组；请导入局部地图 JSON。');
+  const points=raw.points ?? obj.points ?? [];
+  const landmarks=obj.landmarks ?? [];
+  if (obj.path.length>10000 || points.length>120000 || landmarks.length>2048) throw Error('文件点数超过查看器上限。');
+  if (obj.path.some(p=>!posePosition(p))) throw Error('轨迹位置无效。需要 position: {x,y,z}。');
+  if (!Array.isArray(points) || points.some(p=>!v3(p))) throw Error('点云必须是有限数值的 [[x,y,z]]。');
+  if (!Array.isArray(landmarks) || landmarks.some(p=>!p || typeof p!=='object' || (p.point!=null && !v3(p.point)))) throw Error('地标坐标无效。');
+  if (obj.pose!=null && (typeof obj.pose!=='object' || !Array.isArray(obj.pose.transform) || obj.pose.transform.length!==16 || !obj.pose.transform.every(finite))) throw Error('相机位姿 transform 必须有 16 个有限数值。');
+  return {...obj,path:obj.path,landmarks,points,pointSource:raw.pointSource??obj.pointSource};
+}
+function load(raw, source, autoFit=true) {
+  const next=normalize(raw), oldWorld=world(snapshot), newWorld=world(next);
+  snapshot=next;
+  $('pathCount').textContent=snapshot.path.length.toLocaleString();
+  $('pointCount').textContent=snapshot.points.length.toLocaleString();
+  const located=snapshot.landmarks.filter(p=>v3(p.point)).length;
+  const unlocated=snapshot.landmarks.length-located;
+  $('landmarkCount').textContent=`${located} 个定位地标`+(unlocated?` · ${unlocated} 个仅方向观测（未绘入地图）`:'');
+  const sources={lidar_depth:'LiDAR 深度点',visual_features:'视觉特征点'};
+  $('source').textContent='点云来源：'+(snapshot.points.length?(sources[snapshot.pointSource]||'未注明的输入观测点'):'未提供');
+  setStatus(source);
+  if(autoFit || needsFit || oldWorld!==newWorld) { fit(); needsFit=false; }
+  draw();
+}
+function world(map) { const frame=map.pose?.id || map.path?.at(-1)?.frame; return frame?`${frame.session}/${frame.world}`:''; }
+function geometry() { const pose=posePosition(snapshot.pose);return snapshot.path.map(posePosition).concat(snapshot.points, snapshot.landmarks.map(p=>v3(p.point)).filter(Boolean),pose?[pose]:[]); }
+function fit() {
+  if(mode==='floor' && floorImage) { center=[0,0,0]; scale=Math.min(width/floorImage.width,height/floorImage.height)*.9; panX=panY=0; draw(); return; }
+  const points=geometry();
+  if(!points.length) { scale=45; center=[0,0,0]; panX=panY=0; draw(); return; }
+  let lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
+  for(const p of points) for(let k=0;k<3;k++){lo[k]=Math.min(lo[k],p[k]);hi[k]=Math.max(hi[k],p[k]);}
+  center=lo.map((v,k)=>(v+hi[k])/2); const span=Math.max(hi[0]-lo[0],hi[2]-lo[2],mode==='cloud'?hi[1]-lo[1]:0,2);
+  scale=Math.min(width,height)*.72/span;panX=panY=0;draw();
+}
+function project(p) {
+  if(mode==='floor') {
+    const a=Number($('planRotation').value)*Math.PI/180, ppm=Number($('planScale').value)||40;
+    return [width/2+panX+(Number($('planX').value)+(p[0]*Math.cos(a)-p[2]*Math.sin(a))*ppm)*scale,
+      height/2+panY+(Number($('planY').value)+(p[0]*Math.sin(a)+p[2]*Math.cos(a))*ppm)*scale,0];
+  }
+  const x=p[0]-center[0],y=p[1]-center[1],z=p[2]-center[2];
+  if(mode==='top') return [width/2+panX+x*scale,height/2+panY+z*scale,0];
+  const rx=x*Math.cos(yaw)-z*Math.sin(yaw),rz=x*Math.sin(yaw)+z*Math.cos(yaw);
+  return [width/2+panX+rx*scale,height/2+panY+(rz*Math.cos(pitch)-y*Math.sin(pitch))*scale,rz*Math.sin(pitch)+y*Math.cos(pitch)];
+}
+function line(points,color,size=1) { if(points.length<2)return;ctx.beginPath();points.forEach((p,i)=>{const q=project(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.strokeStyle=color;ctx.lineWidth=size;ctx.stroke(); }
+function grid() {
+  if(mode==='floor')return;
+  const spacing=Math.pow(10,Math.floor(Math.log10(Math.max(1,65/scale))));
+  const reach=Math.max(width,height)/scale*1.5;
+  if(mode==='top') {
+    ctx.strokeStyle='#e3e9f0';ctx.lineWidth=1;
+    for(let x=Math.floor((center[0]-reach)/spacing)*spacing;x<center[0]+reach;x+=spacing)line([[x,0,center[2]-reach],[x,0,center[2]+reach]],'#e3e9f0');
+    for(let z=Math.floor((center[2]-reach)/spacing)*spacing;z<center[2]+reach;z+=spacing)line([[center[0]-reach,0,z],[center[0]+reach,0,z]],'#e3e9f0');
+  } else {
+    const r=Math.min(30,Math.ceil(reach));
+    for(let i=-r;i<=r;i++) {line([[center[0]+i,0,center[2]-r],[center[0]+i,0,center[2]+r]],'#e5eaf1');line([[center[0]-r,0,center[2]+i],[center[0]+r,0,center[2]+i]],'#e5eaf1');}
+  }
+}
+function draw() {
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,width,height);
+  grid();
+  const hasGeometry=snapshot.path.length||snapshot.points.length||snapshot.landmarks.some(p=>v3(p.point))||posePosition(snapshot.pose);
+  $('empty').hidden=mode==='floor'?!!floorImage:!!hasGeometry;
+  $('floorControls').style.display=mode==='floor'?'block':'none';
+  if(mode==='floor') {
+    if(!floorImage) { $('empty').innerHTML='<b>选择扫描楼层图</b><br>从左侧切换楼层，或导入图片。';return; }
+    ctx.drawImage(floorImage,width/2+panX-floorImage.width*scale/2,height/2+panY-floorImage.height*scale/2,floorImage.width*scale,floorImage.height*scale);
+    if(!$('overlay').checked)return;
+    const origin=project([0,0,0]);ctx.strokeStyle='#9b4acb';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(origin[0]-8,origin[1]);ctx.lineTo(origin[0]+8,origin[1]);ctx.moveTo(origin[0],origin[1]-8);ctx.lineTo(origin[0],origin[1]+8);ctx.stroke();
+  } else $('empty').innerHTML='<b>等待真实地图数据</b><br>选择手机导出的 JSON；若文件不含 points，<br>只显示已有轨迹和地标，不生成点云。';
+  if($('showPoints').checked) {
+    const size=Number($('pointSize').value), points=snapshot.points;
+    let minY=Infinity,maxY=-Infinity;for(const p of points){minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+    ctx.globalAlpha=.7;
+    for(const p of points) {const q=project(p);if(q[0]<0||q[1]<0||q[0]>width||q[1]>height)continue;const t=(p[1]-minY)/Math.max(.1,maxY-minY);ctx.fillStyle=`hsl(${190-140*t},65%,42%)`;ctx.fillRect(q[0]-size/2,q[1]-size/2,size,size);}
+    ctx.globalAlpha=1;
+  }
+  const path=snapshot.path.map(posePosition);line(path,'#1767d2',3);
+  if(path.length) {const a=project(path[0]);ctx.fillStyle='#fff';ctx.strokeStyle='#1767d2';ctx.lineWidth=2;ctx.beginPath();ctx.arc(a[0],a[1],5,0,Math.PI*2);ctx.fill();ctx.stroke();}
+  const kinds={door:'门',aisle_entrance:'通道',sign:'标牌',junction:'路口',person:'人',obstacle:'障碍物',chair:'椅子',stool:'凳子',steps:'台阶'};
+  for(const mark of snapshot.landmarks) {const p=v3(mark.point);if(!p)continue;const q=project(p);ctx.fillStyle='#ed8725';ctx.beginPath();ctx.arc(q[0],q[1],5,0,Math.PI*2);ctx.fill();if($('showLabels').checked){ctx.font='12px -apple-system,sans-serif';ctx.fillStyle='#713b08';ctx.fillText(String(mark.label||kinds[mark.kind]||mark.kind||'地标').slice(0,64),q[0]+8,q[1]-8);}}
+  const latest=posePosition(snapshot.pose)||path.at(-1);
+  if(latest) {const q=project(latest);ctx.fillStyle='#1356a8';ctx.beginPath();ctx.arc(q[0],q[1],6,0,Math.PI*2);ctx.fill();let heading=snapshot.path.at(-1)?.heading??0;if(snapshot.pose?.transform){const t=snapshot.pose.transform;heading=Math.atan2(-t[8],t[10])*180/Math.PI;}const r=heading*Math.PI/180,worldLength=mode==='floor'?20/scale/(Number($('planScale').value)||40):22/scale;line([latest,[latest[0]+Math.sin(r)*worldLength,latest[1],latest[2]-Math.cos(r)*worldLength]],'#1356a8',3);}
+  if(mode!=='floor') {const metres=Math.pow(10,Math.floor(Math.log10(100/scale))),pixels=metres*scale;ctx.fillStyle='#536174';ctx.fillRect(20,height-27,pixels,2);ctx.font='11px -apple-system,sans-serif';ctx.fillText(metres+' m',20,height-34);}
+}
+function resize(){const box=$('viewport').getBoundingClientRect();width=Math.max(1,box.width);height=Math.max(1,box.height);dpr=window.devicePixelRatio||1;canvas.width=width*dpr;canvas.height=height*dpr;draw();}
+new ResizeObserver(resize).observe($('viewport'));
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));fit();});
+$('fit').onclick=fit;
+$('reset').onclick=()=>{$('follow').checked=false;serverRevision=-1;needsFit=true;load({path:[],landmarks:[],points:[]},'已清空。');};
+for(const id of ['showPoints','showLabels','pointSize','overlay','planScale','planRotation','planX','planY'])$(id).oninput=draw;
+$('jsonFile').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>8*1024*1024)throw Error('JSON 文件超过 8 MB。');$('follow').checked=false;load(JSON.parse(await file.text()),'本机导入：'+file.name);}catch(e){setStatus(e.message,true);}};
+function rotatedImage(image,rotation){if(!rotation)return image;const a=rotation*Math.PI/180,c=document.createElement('canvas');c.width=Math.round(Math.abs(image.width*Math.cos(a))+Math.abs(image.height*Math.sin(a)));c.height=Math.round(Math.abs(image.width*Math.sin(a))+Math.abs(image.height*Math.cos(a)));const g=c.getContext('2d');g.translate(c.width/2,c.height/2);g.rotate(a);g.drawImage(image,-image.width/2,-image.height/2);return c;}
+async function openFloor(url,info){const image=new Image();image.onload=()=>{floorImage=rotatedImage(image,Number(info.rotation)||0);$('floorSource').textContent=(info.title||info.label||'导入底图')+' · '+(info.source||'用户导入图片')+'；未与 AR 自动配准。';mode='floor';document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x.dataset.mode==='floor'));fit();};image.onerror=()=>setStatus('底图无法打开。离线模式可用“导入其它底图图片”。',true);image.src=url;}
+$('imageFile').onchange=event=>{const f=event.target.files[0];if(!f)return;if(objectURL)URL.revokeObjectURL(objectURL);objectURL=URL.createObjectURL(f);openFloor(objectURL,{title:f.name,source:'用户导入图片',rotation:0});};
+$('floorSelect').onchange=()=>{const f=floors.find(f=>f.id===$('floorSelect').value);if(f)openFloor('floorplans/'+encodeURIComponent(f.image),f);};
+$('download').onclick=()=>{const blob=new Blob([JSON.stringify(snapshot,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='PathSense-local-map.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
+canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY,panX,panY,yaw,pitch,shift:e.shiftKey};canvas.setPointerCapture(e.pointerId);};
+canvas.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(mode==='cloud'&&!drag.shift){yaw=drag.yaw+dx*.008;pitch=Math.max(.05,Math.min(Math.PI-.05,drag.pitch+dy*.008));}else{panX=drag.panX+dx;panY=drag.panY+dy;}draw();};
+canvas.onpointerup=canvas.onpointercancel=()=>drag=null;
+canvas.onwheel=e=>{e.preventDefault();const old=scale;scale=Math.max(mode==='floor' ? .01 : .2,Math.min(mode==='floor' ? 10 : 1000,scale*Math.exp(-e.deltaY*.0015)));const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left-width/2,y=e.clientY-rect.top-height/2;panX=x-(x-panX)*scale/old;panY=y-(y-panY)*scale/old;draw();};
+async function poll(){if(!$('follow').checked||busy)return;busy=true;try{const selected=$('fileSelect').value;const response=await fetch(selected?'/data?file='+encodeURIComponent(selected):'/state',{cache:'no-store'});if(!response.ok)throw Error('服务器返回 '+response.status);const data=await response.json();if(!$('follow').checked)return;if(data.error)throw Error(data.error);if(selected||data.revision!==serverRevision){load(data,selected?'Mac 文件：'+selected:(data.source||'服务器数据'),false);serverRevision=data.revision;}}catch(e){setStatus('等待服务器：'+e.message,true);}finally{busy=false;}}
+$('follow').onchange=()=>{serverRevision=-1;poll();};$('fileSelect').onchange=()=>{serverRevision=-1;poll();};
+async function init(){if(location.protocol==='http:'||location.protocol==='https:'){$('follow').checked=true;$('serverFiles').hidden=false;try{const r=await fetch('/files'),d=await r.json();for(const name of d.files||[]){const o=document.createElement('option');o.value=o.textContent=name;$('fileSelect').append(o);}}catch{}await poll();}else{$('follow').disabled=true;}
+try{const r=await fetch('floorplans/manifest.json');if(!r.ok)throw Error();const m=await r.json();floors=m.floors||[];}catch{floors=[{id:'G',label:'LEVEL G',title:'BS · LEVEL G',image:'BS-G-扫描.jpg',rotation:-90},{id:'1',label:'LEVEL 1',title:'BS · LEVEL 1',image:'BS-1-扫描.jpg',rotation:-90},{id:'2',label:'LEVEL 2',title:'BS · LEVEL 2',image:'BS-2-扫描.jpg',rotation:-90}];}
+for(const f of floors){const o=document.createElement('option');o.value=f.id;o.textContent=f.title||f.label||f.id;$('floorSelect').append(o);}resize();}
+setInterval(poll,1000);init();
+</script>
+</html>
