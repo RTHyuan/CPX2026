@@ -38,6 +38,16 @@ struct SignMeaning: Codable, Equatable {
         .init(symbol: symbol == .unknown ? other.symbol : symbol, text: text ?? other.text, arrow: arrow ?? other.arrow)
     }
 
+    /// A directional panel describes a route. A second entry observation and a local
+    /// proximity check are required before an unlettered sign can become a finish candidate.
+    func representsEntrance(for target: Destination) -> Bool {
+        guard arrow == nil, case .facility(let facility) = target else { return false }
+        if let text, !WayfindingParser.isPlate(SignParser.normalize(text), for: target) { return false }
+        switch (symbol, facility) {
+        case (.restroom, .restroom), (.elevator, .lift), (.exit, .exit), (.stairs, .stairs): return true
+        default: return false
+        }
+    }
     func agrees(withLocal inscription: String) -> Bool {
         if let text, !WayfindingParser.compatibleInscription(inscription, text) { return false }
         let rows = inscription.split(whereSeparator: \.isNewline)
@@ -66,7 +76,7 @@ enum SignArrow: String, CaseIterable, Codable {
     }
 }
 
-enum VisualSetting: String { case room, outside, shop }
+enum VisualSetting: String { case room, publicCorridor, outside, shop }
 struct SceneClues: Equatable {
     var setting: VisualSetting?
     /// Position in the camera image only. A classifier cannot verify a traversable opening.
@@ -258,7 +268,7 @@ enum WayfindingParser {
            zip(candidate, query).filter({ $0 != $1 }).count == 1 { return visible }
         return nil
     }
-    private static func isPlate(_ row: String, for target: Destination) -> Bool {
+    static func isPlate(_ row: String, for target: Destination) -> Bool {
         switch target {
         case .room: return SignParser.analyze([SignLine(row)], for: target).kind == .target
         case .named(let name): return names(on: row).contains { sameName($0, name) }
@@ -347,10 +357,29 @@ enum WayfindingParser {
            }).count == 1 {
             result.nearbyRoom = ordered.map { SignParser.analyze([SignLine($0)], for: .room("00000")) }.first { $0.kind == .neighbor }?.evidence
         }
+        // Some campus plaques include booking instructions and a second, explicitly labelled room code.
+        // Preserve that local inscription without treating it as a room/corridor classification.
+        if result.nearbyRoom == nil, result.target == nil, !result.signboard, !result.restricted {
+            let lines = frame.lines.filter { $0.confidence >= 0.78 }.map { SignParser.normalize($0.text).filter { !$0.isWhitespace } }
+            let headers = ["ROOM-", "ROOM:", "教室:", "房间:", "房間:"]
+            let named = Set(lines.compactMap { line -> String? in
+                guard let header = headers.first(where: line.hasPrefix) else { return nil }
+                let code = String(line.dropFirst(header.count))
+                return code.first?.isLetter == true && code.range(of: #"^[A-Z]{1,3}[0-9]{1,5}[A-Z]{0,2}$"#, options: .regularExpression) != nil ? code : nil
+            })
+            let standalone = Set(lines.filter { $0.range(of: #"^[A-Z]{1,3}[0-9]{1,5}[A-Z]{0,2}$"#, options: .regularExpression) != nil })
+            if named.count == 1, named == standalone { result.nearbyRoom = named.first }
+        }
         if !result.signboard, portals.count == 1, let (name, directions) = portals.first, directions.count <= 1 {
             result.portal = name; result.portalArrow = directions.first
         }
-        if result.target == nil, result.nearbyRoom == nil, result.transfer == nil, result.currentLevel == nil, !result.signboard { result.scene = frame.scene }
+        // A same-frame plaque must not hide the independent scene classification. Geometry is
+        // only an image-space clue and still enters the usual confirmation/voting path.
+        result.scene = frame.scene
+        let publicHere = #"(?:您在此|你在此|当前位置|所在位置|目前位于)[\s:：·-]*(?:公共)?(?:走廊|通廊|大堂)|\b(?:YOU ARE HERE|CURRENT LOCATION)[\s:·-]*(?:(?:PUBLIC|MAIN|NORTH|EAST|SOUTH|WEST)\s+)?(?:CORRIDOR|HALLWAY|LOBBY)\b"#
+        if ordered.contains(where: { arrows($0).isEmpty && has(publicHere, $0) }) {
+            result.scene.setting = frame.scene.setting == .room ? nil : .publicCorridor
+        }
         return result
     }
     private static func transitName(_ text: String) -> String? {

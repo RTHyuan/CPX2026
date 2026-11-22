@@ -6,7 +6,7 @@ final class GuidancePromptTests: XCTestCase {
         var route = WayfindingJourney(target: .room("0402"))
         route.observe(WayfindingSigns(nearbyRoom: "208"))
         XCTAssertTrue(route.cue.contains("门牌208"))
-        XCTAssertEqual(route.prompt.speech, "记下门牌二零八。请在公共区域寻找楼层目录，确认零四零二在哪里。")
+        XCTAssertEqual(route.prompt.speech, "记下门牌二零八。目的地是零四零二。请观察两侧，核对现在是在房间内还是走廊。")
         route.observe(WayfindingSigns(target: .listed(RouteSite(level: "4F"))))
         XCTAssertTrue(route.prompt.speech.contains("零四零二列在四楼"))
         route.observe(WayfindingSigns(currentLevel: "B1"))

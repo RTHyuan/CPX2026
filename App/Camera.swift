@@ -69,12 +69,16 @@ final class SignCamera: NSObject, ARSessionDelegate {
     }
     private let semantics=DispatchQueue(label:"PathSense.AR.signs",qos:.utility)
     private let gate=DispatchQueue(label:"PathSense.AR.latest")
-    private var lastPublished:FramePose?
+    private var lastPublished:FramePose?, lastAssessed: NearField?
+    private var mappingPoints: MappingPointBatch?
+    private var lastMappingAt = -Double.infinity
     private var latestPreview: PreviewCapture? // protected by gate, published with lastPublished
     fileprivate func previewCapture() -> PreviewCapture? { gate.sync { latestPreview } }
     @MainActor fileprivate weak var previewSurface: CameraPreview.Surface?
     private var acceptFramesAfter = TimeInterval.infinity // frames queue only
     func latestPose() -> FramePose? { gate.sync { lastPublished } }
+    func latestMappingPoints() -> MappingPointBatch? { gate.sync { mappingPoints } }
+    func latestAssessment() -> (FramePose?, NearField?) { gate.sync { (lastPublished, lastAssessed) } }
     private var stream:(id:UUID,target:Destination,cloud:Bool,event:(CameraEvent)->Void)?
     private var world=0, sequence=0, orientation:CGImagePropertyOrientation = .right
     private var origin:FramePose?, lastNear = -Double.infinity, lastSigns = -Double.infinity
@@ -89,7 +93,11 @@ final class SignCamera: NSObject, ARSessionDelegate {
     private var lastReplayRead: (buffer: CVPixelBuffer, capture: FrameID, target: Destination, frame: FrameResult, scene: SceneClues)?
     private var replayReading = false
     private var replayIndex=0
-    var isReplaying: Bool { ProcessInfo.processInfo.environment["PATHSENSE_TEST_CAMERA"] != nil }
+    private var videoReplay: SimulatorVideoFeed?
+    var isReplaying: Bool {
+        let env = ProcessInfo.processInfo.environment
+        return env["PATHSENSE_TEST_CAMERA"] != nil || env["PATHSENSE_TEST_VIDEO"] != nil
+    }
     #endif
     func updateOrientation(_ device: UIDeviceOrientation) {
         let o:CGImagePropertyOrientation
@@ -102,6 +110,16 @@ final class SignCamera: NSObject, ARSessionDelegate {
         frames.async {
             self.stream=(id,target,cloud,event)
             #if DEBUG && targetEnvironment(simulator)
+            if let path = ProcessInfo.processInfo.environment["PATHSENSE_TEST_VIDEO"] {
+                self.videoReplay?.stop()
+                let video = SimulatorVideoFeed(path: path)
+                self.videoReplay = video
+                self.replayIndex = 0
+                self.resetWorld()
+                event(.state(video.state))
+                if video.state == .ready { self.videoNext(id: id, video: video) }
+                return
+            }
             if let replay=self.replay { self.replayIndex=0; event(.state(replay.state)); if replay.state == .ready { self.replayNext(id:id) }; return }
             #endif
             guard ARWorldTrackingConfiguration.isSupported else { event(.state(.unavailable)); return }
@@ -125,13 +143,17 @@ final class SignCamera: NSObject, ARSessionDelegate {
     }
     private func resetWorld() {
         world+=1; sequence=0; origin=nil; lastNormal=false; burst=true; recentObjects=nil
-        lastNear = -.infinity; lastSigns = -.infinity; nearEngine=NearVision()
-        gate.sync { lastPublished=nil; latestPreview=nil }
+        lastNear = -.infinity; lastSigns = -.infinity; lastMappingAt = -.infinity; nearEngine=NearVision()
+        gate.sync { lastPublished=nil; lastAssessed=nil; latestPreview=nil; mappingPoints=nil }
         // A suspended display link may not tick when entering the background.
         DispatchQueue.main.async { [weak self] in self?.previewSurface?.clearIfWorldChanged() }
     }
     func stop() { frames.async {
         self.stream = nil
+        #if DEBUG && targetEnvironment(simulator)
+        self.videoReplay?.stop()
+        self.videoReplay = nil
+        #endif
         self.acceptFramesAfter = .infinity
         let old = self.session
         old?.delegate = nil
@@ -168,6 +190,11 @@ final class SignCamera: NSObject, ARSessionDelegate {
                                      sensorOrientation: orientation, buffer: frame.capturedImage)
         gate.sync { lastPublished=pose; latestPreview=capture }
         stream.event(.pose(pose))
+        if pose.normal, pose.time - lastMappingAt >= 0.5 {
+            lastMappingAt = pose.time
+            let sample = Self.mappingSample(frame, pose: pose)
+            gate.sync { mappingPoints = sample }
+        }
         guard !nearBusy, pose.time-lastNear>=0.105 else {return}; nearBusy=true; lastNear=pose.time
         let engine=nearEngine, o=orientation
         let objects=recentObjects.flatMap { old,items in old.id.sameWorld(pose.id) && pose.time-old.time<0.65 && abs(turnAngle(old.heading-pose.heading))<5 && old.position.groundDistance(pose.position)<0.12 ? items:nil } ?? []
@@ -192,6 +219,7 @@ final class SignCamera: NSObject, ARSessionDelegate {
             self.frames.async {
                 self.nearBusy=false
                 guard self.stream?.id==stream.id && self.world==pose.id.world else { if wantKey { self.signsBusy=false }; return }
+                self.gate.sync { self.lastAssessed = near }
                 stream.event(.near(near))
                 if wantKey, let furniture {
                     // Copy the buffer reference, not the ARFrame, for the slower worker.
@@ -207,6 +235,40 @@ final class SignCamera: NSObject, ARSessionDelegate {
                 }
             }
         }
+    }
+    private static func mappingSample(_ frame: ARFrame, pose: FramePose) -> MappingPointBatch {
+        if let data = frame.sceneDepth, let confidence = data.confidenceMap {
+            let depth = data.depthMap, width = CVPixelBufferGetWidth(depth), height = CVPixelBufferGetHeight(depth)
+            if CVPixelBufferGetPixelFormatType(depth) == kCVPixelFormatType_DepthFloat32,
+               CVPixelBufferGetPixelFormatType(confidence) == kCVPixelFormatType_OneComponent8,
+               CVPixelBufferGetWidth(confidence) == width, CVPixelBufferGetHeight(confidence) == height,
+               CVPixelBufferLockBaseAddress(depth, .readOnly) == kCVReturnSuccess {
+                defer { CVPixelBufferUnlockBaseAddress(depth, .readOnly) }
+                if CVPixelBufferLockBaseAddress(confidence, .readOnly) == kCVReturnSuccess {
+                    defer { CVPixelBufferUnlockBaseAddress(confidence, .readOnly) }
+                    if let base = CVPixelBufferGetBaseAddress(depth), let quality = CVPixelBufferGetBaseAddress(confidence) {
+                        let strideD = CVPixelBufferGetBytesPerRow(depth), strideQ = CVPixelBufferGetBytesPerRow(confidence)
+                        var points: [V3] = []
+                        let step = max(4, Int(ceil(sqrt(Double(width * height) / 1_000))))
+                        let m = frame.camera.transform, k = frame.camera.intrinsics
+                        for y in stride(from: step / 2, to: height, by: step) {
+                            for x in stride(from: step / 2, to: width, by: step) {
+                                let q = quality.load(fromByteOffset: y * strideQ + x, as: UInt8.self)
+                                let d = base.load(fromByteOffset: y * strideD + x * 4, as: Float.self)
+                                guard q >= 1, d.isFinite, (0.2...5.0).contains(d) else { continue }
+                                let u = (Float(x) + 0.5) * Float(pose.width) / Float(width)
+                                let v = (Float(y) + 0.5) * Float(pose.height) / Float(height)
+                                let camera = SIMD4<Float>((u-k[2][0])*d/k[0][0], -(v-k[2][1])*d/k[1][1], -d, 1)
+                                let p = m * camera
+                                points.append(V3(Double(p.x), Double(p.y), Double(p.z)))
+                            }
+                        }
+                        return MappingPointBatch(pose: pose, points: points, source: "lidar_depth")
+                    }
+                }
+            }
+        }
+        return MappingPointBatch(pose: pose, points: Array(frame.rawFeaturePoints?.points.prefix(1_000).map(V3.init) ?? []), source: "visual_features")
     }
     private func key(_ buffer:CVPixelBuffer,pose:FramePose,o:CGImagePropertyOrientation,near:NearField,target:Destination,cloud:Bool,localized:[Sighting], immutableReplay:Bool = false) -> KeyObservation {
         let image=CIImage(cvPixelBuffer:buffer).oriented(o)
@@ -226,12 +288,19 @@ final class SignCamera: NSObject, ARSessionDelegate {
             }
         }
         var jpeg:Data?, width=0,height=0
-        // A high-contrast pictogram can be legible even on a textureless wall. Near-field
-        // eligibility certifies a walking strip and must not be the only way to send a sign.
-        let signDetail = cloud && (candidates.contains { $0.kind == .sign } || gray?.containsGraphic == true)
-        if cloud && pose.normal && (near.visible || signDetail) {
-            let scale=min(1,768/max(image.extent.width,image.extent.height)); let small=image.transformed(by:.init(scaleX:scale,y:scale))
-            if let cg=RouteVision.renderer.createCGImage(small,from:small.extent.integral) { jpeg=UIImage(cgImage:cg).jpegData(compressionQuality:0.64); width=cg.width;height=cg.height }
+        // Keyframe selection is rate-limited independently of near-field analysis. A door or
+        // a corridor on a level view can guide the plan even when the floor is outside the image.
+        if cloud && pose.normal {
+            // Send upright, uncropped keyframes. Intrinsics still describe the original sensor
+            // raster; FramePose.exif converts normalized upright boxes to sensor coordinates.
+            if let cg = RouteVision.renderer.createCGImage(image, from: image.extent) {
+                let still = UIImage(cgImage: cg)
+                for quality in [0.82, 0.65, 0.48] {
+                    if let data = still.jpegData(compressionQuality: quality), data.count <= CloudClient.imageLimit {
+                        jpeg = data; width = cg.width; height = cg.height; break
+                    }
+                }
+            }
         }
         return .init(pose:pose,features:candidates,signs:frame,jpeg:jpeg,sentWidth:width,sentHeight:height,sceneSignature:gray?.signature(.init(0.10,0.10,0.90,0.73)))
     }
@@ -241,11 +310,14 @@ final class SignCamera: NSObject, ARSessionDelegate {
         if immutableReplay, let last = lastReplayRead, last.buffer === buffer,
            last.capture.sameWorld(capture), last.target == target { return (last.frame, last.scene) }
         #endif
-        let frame=try? reader.frame(buffer,orientation:orientation,target:target)
+        var frame=try? reader.frame(buffer,orientation:orientation,target:target)
         let scene:SceneClues
         if frame?.scene.doorBoxes.isEmpty == false { scene=frame!.scene }
         else if frame?.scene == SceneClues(), !(frame?.lines.isEmpty ?? true) { scene=RouteVision.scene(VNImageRequestHandler(cvPixelBuffer:buffer,orientation:orientation),image:image) }
         else { scene=frame?.scene ?? SceneClues() }
+        // OCR suppresses the reader's opportunistic classifier. Restore the independent
+        // same-buffer scene before caching/delivering the frame to the journey.
+        frame?.scene = scene
         #if DEBUG && targetEnvironment(simulator)
         if immutableReplay, let frame { lastReplayRead = (buffer, capture, target, frame, scene) }
         #endif
@@ -264,17 +336,78 @@ final class SignCamera: NSObject, ARSessionDelegate {
         }; return items
     }
     #if DEBUG && targetEnvironment(simulator)
+    private func videoNext(id: UUID, video: SimulatorVideoFeed) {
+        guard let s = stream, s.id == id, videoReplay === video else { return }
+        let time = ProcessInfo.processInfo.systemUptime
+        do {
+            if let sample = try video.next(at: time) {
+                if sample.loop != replayIndex {
+                    resetWorld()
+                    replayIndex = sample.loop
+                }
+                sequence += 1
+                let width = CVPixelBufferGetWidth(sample.buffer), height = CVPixelBufferGetHeight(sample.buffer)
+                let w = Double(width), h = Double(height), focal = 0.55 * w
+                // RGB playback supplies no measured device pose or camera calibration. This
+                // stationary identity transform only lets the existing image request pipeline
+                // operate; unknown near-field sectors never authorize a walking step.
+                let pose = FramePose(id: .init(session: id, world: world, frame: sequence), time: time,
+                                     transform: [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1],
+                                     intrinsics: [focal,0,0,0,focal,0,w/2,h/2,1],
+                                     width: width, height: height, exif: 1, tracking: "normal")
+                let near = NearField(pose: pose, visible: true,
+                                     sectors: stride(from: -60, through: 60, by: 15).map { Sector(angle: $0, state: .unknown) },
+                                     hazards: [], reason: "simulatorVideoRGBOnly_noMeasuredPoseOrDepth", canCoachFraming: false)
+                let capture = PreviewCapture(id: pose.id, timestamp: time, receivedAt: CACurrentMediaTime(),
+                                             sensorOrientation: .up, buffer: sample.buffer)
+                gate.sync { lastPublished = pose; lastAssessed = near; latestPreview = capture }
+                s.event(.pose(pose)); s.event(.near(near)); s.event(.preview(sample.preview))
+                if !replayReading && (burst || time - lastSigns >= 0.55) {
+                    replayReading = true; burst = false; lastSigns = time
+                    let buffer = sample.buffer
+                    semantics.async {
+                        let localized = Self.furniture(buffer, .up)
+                        let key = self.key(buffer, pose: pose, o: .up, near: near, target: s.target,
+                                           cloud: s.cloud, localized: localized)
+                        self.frames.async {
+                            self.replayReading = false
+                            guard self.stream?.id == id, self.videoReplay === video, self.stream?.target == s.target,
+                                  self.latestPose()?.id.sameWorld(pose.id) == true else { return }
+                            s.event(.key(key))
+                        }
+                    }
+                }
+            }
+            if video.finished {
+                s.event(.state(.failed("演示视频已播放完。暂停后继续可从头播放。")))
+                return
+            }
+        } catch {
+            video.stop()
+            s.event(.state(.failed("演示视频读取失败：" + error.localizedDescription)))
+            return
+        }
+        frames.asyncAfter(deadline: .now() + 1.0 / 30.0) { [weak self] in self?.videoNext(id: id, video: video) }
+    }
+
     private func replayNext(id:UUID) {
         guard let s = stream, s.id == id else { return }
-        let observation = evidence?.sample(at: replayIndex)
-        guard let sample = replay?.next(picture: observation?.picture, cloud: s.cloud && observation != nil) else { return }
-        let t=ProcessInfo.processInfo.systemUptime
-        if let observation {
+        let t = ProcessInfo.processInfo.systemUptime
+        let replaySample = evidence?.sample(at: replayIndex, time: t)
+        let interval = replaySample?.observation.captures == nil ? 0.15 : 0.055
+        if let replaySample, !replaySample.isFresh {
+            replayIndex += 1
+            frames.asyncAfter(deadline: .now() + interval) { [weak self] in self?.replayNext(id: id) }
+            return
+        }
+        guard let sample = replay?.next(picture: replaySample?.picture, cloud: s.cloud && replaySample != nil) else { return }
+        if let replaySample {
+            let observation = replaySample.observation
             let buffer = sample.buffer
             let width = CVPixelBufferGetWidth(buffer), height = CVPixelBufferGetHeight(buffer)
-            let (pose, near) = observation.events(session: id, sequence: replayIndex, time: t, width: width, height: height)
-            gate.sync { lastPublished=pose }; s.event(.pose(pose)); s.event(.near(near))
-            if replayIndex % 3 == 0 {
+            let (pose, near) = observation.events(session: id, frame: replaySample.frame, tick: replaySample.tick, time: replaySample.time, width: width, height: height)
+            gate.sync { lastPublished=pose; lastAssessed=near }; s.event(.pose(pose)); s.event(.near(near))
+            if observation.captures != nil || observation.freezeCapture == true || replayIndex % 3 == 0 {
                 s.event(.preview(sample.preview))
                 if observation.readSigns == true {
                     // Run the same key builder as AR capture, once, against this retained buffer
@@ -298,12 +431,12 @@ final class SignCamera: NSObject, ARSessionDelegate {
                     }
                 } else {
                     // Geometry-only or relay-only tape. No local recognition runs on these pixels.
-                    let jpeg = s.cloud && pose.normal && near.visible ? sample.preview.jpegData(compressionQuality: 0.65) : nil
+                    let jpeg = s.cloud && pose.normal ? sample.preview.jpegData(compressionQuality: 0.65) : nil
                     s.event(.key(.init(pose: pose, features: observation.features, signs: nil, jpeg: jpeg,
                                        sentWidth: jpeg == nil ? 0 : width, sentHeight: jpeg == nil ? 0 : height, sceneSignature: sample.signature)))
                 }
             }
-            replayIndex += 1; frames.asyncAfter(deadline:.now()+0.15) { [weak self] in self?.replayNext(id:id) }; return
+            replayIndex += 1; frames.asyncAfter(deadline:.now()+interval) { [weak self] in self?.replayNext(id:id) }; return
         }
         s.event(.preview(sample.preview))
         if let result=try? reader.frame(sample.buffer,orientation:.up,target:s.target) { s.event(.frame(result,sampledAt:t)) }
@@ -634,6 +767,117 @@ extension CameraPreview.Surface {
 #endif
 
 #if DEBUG && targetEnvironment(simulator)
+/// Decode local video pixels at their presentation times. This source deliberately
+/// supplies neither AR motion nor depth/ground evidence and is absent from device builds.
+private final class SimulatorVideoFeed {
+    struct Sample {
+        let buffer: CVPixelBuffer
+        let preview: UIImage
+        let loop: Int
+    }
+    private struct ReadFailure: LocalizedError {
+        let errorDescription: String?
+        init(_ message: String) { errorDescription = message }
+    }
+
+    private(set) var state: CaptureState = .starting
+    private(set) var finished = false
+    private let url: URL
+    private let looping: Bool
+    private let renderer = CIContext(options: [.cacheIntermediates: false])
+    private var reader: AVAssetReader?
+    private var output: AVAssetReaderTrackOutput?
+    private var pending: CMSampleBuffer?
+    private var preferredTransform = CGAffineTransform.identity
+    private var start: TimeInterval?, firstPTS: TimeInterval?
+    private var loop = 0
+
+    init(path: String) {
+        url = URL(fileURLWithPath: path)
+        looping = ProcessInfo.processInfo.environment["PATHSENSE_TEST_VIDEO_LOOP"] == "1"
+        do {
+            guard path.hasPrefix("/"), FileManager.default.isReadableFile(atPath: path) else {
+                throw ReadFailure("请把视频复制到模拟器 Documents，并设置绝对路径。")
+            }
+            try open()
+            state = .ready
+            NSLog("PathSense simulator video: RGB pixels only; synthetic stationary pose; no measured pose, depth, or walking clearance. Loop=%@", looping ? "yes" : "no")
+        } catch {
+            state = .failed("无法打开演示视频：" + error.localizedDescription)
+        }
+    }
+
+    private func open() throws {
+        reader?.cancelReading()
+        reader = nil; output = nil; pending = nil
+        let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        guard let track = asset.tracks(withMediaType: .video).first else { throw ReadFailure("文件没有视频轨道。") }
+        preferredTransform = track.preferredTransform
+        let nextReader = try AVAssetReader(asset: asset)
+        let nextOutput = AVAssetReaderTrackOutput(track: track,
+            outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
+        nextOutput.alwaysCopiesSampleData = false
+        guard nextReader.canAdd(nextOutput) else { throw ReadFailure("无法解码这段视频。") }
+        nextReader.add(nextOutput)
+        guard nextReader.startReading() else { throw nextReader.error ?? ReadFailure("视频解码未启动。") }
+        reader = nextReader; output = nextOutput
+        start = nil; firstPTS = nil; finished = false
+    }
+
+    /// Keeps only the current and next decoded captures. Slow recognition never
+    /// slows the movie: intervening source frames are skipped by source PTS.
+    func next(at now: TimeInterval) throws -> Sample? {
+        guard let reader, let output, !finished else { return nil }
+        if reader.status == .failed { throw reader.error ?? ReadFailure("视频解码失败。") }
+        if pending == nil { pending = output.copyNextSampleBuffer() }
+        guard let pending else {
+            if reader.status == .failed { throw reader.error ?? ReadFailure("视频解码失败。") }
+            if looping {
+                loop += 1
+                try open()
+                NSLog("PathSense simulator video: restarted loop %d; resetting navigation world.", loop)
+            } else {
+                finished = true
+                reader.cancelReading()
+                NSLog("PathSense simulator video: reached the last source frame.")
+            }
+            return nil
+        }
+        if firstPTS == nil {
+            firstPTS = CMSampleBufferGetPresentationTimeStamp(pending).seconds
+            start = now
+        }
+        guard let firstPTS, firstPTS.isFinite, let start else { throw ReadFailure("视频时间戳不可用。") }
+        let elapsed = max(0, now - start)
+        var selected: CMSampleBuffer?
+        while let candidate = self.pending {
+            let pts = CMSampleBufferGetPresentationTimeStamp(candidate).seconds
+            guard pts.isFinite else { throw ReadFailure("视频时间戳不可用。") }
+            guard pts - firstPTS <= elapsed + 0.0001 else { break }
+            selected = candidate
+            self.pending = output.copyNextSampleBuffer()
+        }
+        guard let selected, let source = CMSampleBufferGetImageBuffer(selected) else { return nil }
+        let image = CIImage(cvPixelBuffer: source).transformed(by: preferredTransform)
+        let upright = image.transformed(by: .init(translationX: -image.extent.minX, y: -image.extent.minY))
+        guard let cg = renderer.createCGImage(upright, from: upright.extent) else { throw ReadFailure("视频帧无法显示。") }
+        var buffer: CVPixelBuffer?
+        let attrs: [CFString: Any] = [kCVPixelBufferIOSurfacePropertiesKey: [:] as NSDictionary]
+        guard CVPixelBufferCreate(nil, cg.width, cg.height, kCVPixelFormatType_32BGRA,
+                                  attrs as CFDictionary, &buffer) == kCVReturnSuccess, let buffer else {
+            throw ReadFailure("视频帧缓存不可用。")
+        }
+        renderer.render(upright, to: buffer, bounds: upright.extent, colorSpace: CGColorSpaceCreateDeviceRGB())
+        return Sample(buffer: buffer, preview: UIImage(cgImage: cg), loop: loop)
+    }
+
+    func stop() {
+        reader?.cancelReading()
+        reader = nil; output = nil; pending = nil
+        finished = true
+    }
+}
+
 /// Only the UI test runner owns fixtures. Supply pixels at the capture boundary;
 /// no fixture labels, destinations, or expected results go into the navigator.
 private final class SimulatorFeed {

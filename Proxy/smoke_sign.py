@@ -8,7 +8,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import tempfile
 import threading
 import uuid
 
@@ -24,9 +23,10 @@ import ImageIO
 
 let data = FileHandle.standardInput.readDataToEndOfFile()
 let jpeg = "public.jpeg" as CFString
+let native = ProcessInfo.processInfo.environment["PATHSENSE_SMOKE_NATIVE"] == "1"
 let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
                                 kCGImageSourceCreateThumbnailWithTransform: true,
-                                kCGImageSourceThumbnailMaxPixelSize: 960]
+                                kCGImageSourceThumbnailMaxPixelSize: native ? 16384 : 960]
 guard let src = CGImageSourceCreateWithData(data as CFData, nil), CGImageSourceGetType(src) == jpeg,
       CGImageSourceGetStatus(src) == .statusComplete,
       let image = CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary),
@@ -40,7 +40,7 @@ for quality in [0.72, 0.55, 0.38] {
     let output = NSMutableData()
     guard let dest = CGImageDestinationCreateWithData(output, jpeg, 1, nil) else { exit(1) }
     CGImageDestinationAddImage(dest, pixels, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
-    if CGImageDestinationFinalize(dest), output.length <= 360_000 {
+    if CGImageDestinationFinalize(dest), output.length <= (native ? 8 * 1024 * 1024 : 360_000) {
         FileHandle.standardOutput.write(output as Data)
         exit(0)
     }
@@ -49,7 +49,7 @@ exit(1)
 '''
 
 
-def prepare_photo(path):
+def prepare_photo(path, native=False):
     if path.suffix.lower() not in ('.jpeg', '.jpg') or not path.is_file():
         raise ValueError('invalid_photo')
     with path.open('rb') as stream:
@@ -57,10 +57,13 @@ def prepare_photo(path):
         fd = stream.fileno()
         if os.fstat(fd).st_size > 64 * 1024**2 or os.pread(fd, 2, 0) != b'\xff\xd8':
             raise ValueError('invalid_photo')
-        with tempfile.TemporaryDirectory() as cache:
-            result = subprocess.run(['/usr/bin/swift', '-module-cache-path', cache, '-e', PHOTO_PREPROCESSOR],
-                                    stdin=stream, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                    timeout=60, check=True)
+        # Cache compiled SDK modules, never the operator's input pixels.
+        cache = Path(__file__).resolve().parents[1] / '.build-local' / 'clang-module-cache'
+        cache.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(['/usr/bin/swift', '-module-cache-path', str(cache), '-e', PHOTO_PREPROCESSOR],
+                                env={**os.environ, 'PATHSENSE_SMOKE_NATIVE':'1' if native else '0'},
+                                stdin=stream, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                timeout=120, check=True)
     return result.stdout
 
 
@@ -115,8 +118,16 @@ def exchange(relay, packet):
         reply = json.loads(data, object_pairs_hook=server.json_object)
         if response.status != 200:
             return relay_error(reply)
-        server.validate_reply(reply, packet['context']['capture']['sample']['id'])
-        return redacted_summary(reply)
+        capture = packet['context']['capture']['sample']['id']
+        sources = None
+        if packet.get('version') == 2:
+            sources = {capture['frame'], *(frame['pose']['sample']['id']['frame'] for frame in packet['historical_frames'])}
+        server.validate_reply(reply, capture, sources)
+        summary = redacted_summary(reply)
+        if sources is not None:
+            summary.update(protocol=2, pose='injected', scene=reply['plan']['scene'],
+                           task=reply['plan']['task'], completion=reply['plan']['completion'])
+        return summary
     finally:
         conn.close()
 
@@ -146,12 +157,17 @@ def main(argv=None):
     parser.add_argument('--image', '--photo', dest='image', type=Path, required=True, metavar='PHOTO.jpg',
                         help='one real camera JPEG selected by the operator')
     parser.add_argument('--live', action='store_true', help='submit it once via the paired relay and demo_key()')
+    parser.add_argument('--planner', action='store_true', help='use the production v2 task planner with an injected pose')
     args = parser.parse_args(argv)
     try:
-        jpeg = prepare_photo(args.image)
+        jpeg = prepare_photo(args.image, native=args.planner)
         width, height = server.jpeg_size(jpeg)
         ctx = make_context(width, height, str(uuid.uuid4()).upper())
         packet = {'context':ctx, 'image':base64.b64encode(jpeg).decode('ascii')}
+        if args.planner:
+            ctx.update(utterance='带我去厕所', destination='洗手间')
+            packet.update(version=2, historical_frames=[], execution_state='observing',
+                          planning={'scene':'unknown', 'task':'observe', 'version':0, 'requires_exit':False})
         server.validate_input(packet)
     except (OSError, ValueError, subprocess.SubprocessError, server.struct.error):
         result = {'status':'error', 'error':'invalid_photo'}

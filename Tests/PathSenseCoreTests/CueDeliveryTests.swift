@@ -15,7 +15,15 @@ final class CueDeliveryTests: XCTestCase {
     }
     func testLossOfWalkingEvidencePreemptsSignAndFreshPersonPreemptsRecheck() {
         var channel = CueDelivery()
-        XCTAssertTrue(channel.take(.init(kind: .advance, text: "慢行一小段。"), at: 1))
+        XCTAssertFalse(channel.take(.init(kind: .advance, text: "向前迈一步。"), at: 1))
+        let id = UUID()
+        XCTAssertTrue(channel.take(.init(kind: .advance, text: "向前迈一步。", permitID: id), at: 1))
+        XCTAssertFalse(channel.forwardOutstanding) // Only the actual audio callback can set this.
+        let p = FramePose(id: .init(session: UUID(), world: 1, frame: 3), time: 1,
+            transform: [1,0,0,0,0,1,0,0,0,0,1,0,0,1.3,0,1], intrinsics: [550,0,0,0,550,0,500,400,1], width: 1000, height: 800, exif: 1, tracking: "normal")
+        let permit = StepPermit(id: id, check: .init(origin: p, frames: [], times: [], coverage: []),
+            target: .init(destination: "厕所", task: "找出口", revision: 1), status: .spoken, spokenAt: 1.1)
+        channel.syncStep(permit)
         XCTAssertTrue(channel.take(.init(kind: .route, text: "左侧有电梯图标。"), at: 1.2))
         XCTAssertTrue(channel.forwardOutstanding)
         XCTAssertTrue(channel.take(.init(kind: .wait, text: "先停一下，通道还没看清。"), at: 1.3, revoke: true))

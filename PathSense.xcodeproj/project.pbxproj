@@ -7,9 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        C90000010000000000000002 /* Core/LocalMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90000010000000000000001; };
+        C80000010000000000000008 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C80000010000000000000007; };
+        C80000010000000000000002 /* Core/GuidanceLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80000010000000000000001; };
+        C80000010000000000000004 /* deepseek-demo-en-v1.txt in Resources */ = {isa = PBXBuildFile; fileRef = C80000010000000000000003; };
+		C70000010000000000000008 /* App/Resources/deepseek-demo-v1.txt in Resources */ = {isa = PBXBuildFile; fileRef = C70000010000000000000007 /* App/Resources/deepseek-demo-v1.txt */; };
+		C70000010000000000000006 /* App/DoorDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000010000000000000005 /* App/DoorDemoView.swift */; };
+		C70000010000000000000004 /* App/DoorDemoSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000010000000000000003 /* App/DoorDemoSession.swift */; };
+		C70000010000000000000002 /* Core/DemoGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70000010000000000000001 /* Core/DemoGuide.swift */; };
+		C60000010000000000000006 /* deepseek-planner-v2.txt in Resources */ = {isa = PBXBuildFile; fileRef = C60000010000000000000005; };
+		C60000010000000000000002 /* CloudConnectionCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = C60000010000000000000001; };
+		C60000010000000000000004 /* route-door.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C60000010000000000000003; };
+		00000026AA26000000000002 /* advance-one-step.caf in Resources */ = {isa = PBXBuildFile; fileRef = 00000026AA26000000000001; };
 		1045D66459FA6568D264EEFD /* UITests/PathSenseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90D563818CF0CC4A750592F /* UITests/PathSenseUITests.swift */; };
 		356D42E61CCAD9A5D3748E48 /* Core/ScanGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */; };
 		763AC81D3311A5D17BB12A13 /* Core/CueDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCBE73E1465C77BAAF4E0B30 /* Core/CueDelivery.swift */; };
+		5EA1CD1E84F8CA04E9BA5C1C /* Core/StepExecution.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA988613A4236D55AB136059 /* Core/StepExecution.swift */; };
 		8A4B86C7E50B2CEB1C36C994 /* Core/PassageEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */; };
 		50CCBAC2F1777472B8DFC4E8 /* App/SimulatorEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */; };
 		71D3A6820F13286A4A78236D /* App/DeviceDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */; };
@@ -49,6 +62,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+        C90000010000000000000001 /* Core/LocalMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/LocalMapping.swift; sourceTree = SOURCE_ROOT; };
+        C80000010000000000000005 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = App/Resources/en.lproj/InfoPlist.strings; sourceTree = SOURCE_ROOT; };
+        C80000010000000000000006 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "App/Resources/zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
+        C80000010000000000000001 /* Core/GuidanceLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/GuidanceLanguage.swift; sourceTree = SOURCE_ROOT; };
+        C80000010000000000000003 /* deepseek-demo-en-v1.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = App/Resources/deepseek-demo-en-v1.txt; sourceTree = SOURCE_ROOT; };
+		C70000010000000000000007 /* App/Resources/deepseek-demo-v1.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = App/Resources/deepseek-demo-v1.txt; sourceTree = SOURCE_ROOT; };
+		C70000010000000000000005 /* App/DoorDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/DoorDemoView.swift; sourceTree = SOURCE_ROOT; };
+		C70000010000000000000003 /* App/DoorDemoSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/DoorDemoSession.swift; sourceTree = SOURCE_ROOT; };
+		C70000010000000000000001 /* Core/DemoGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/DemoGuide.swift; sourceTree = SOURCE_ROOT; };
+		C60000010000000000000005 /* deepseek-planner-v2.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = App/Resources/deepseek-planner-v2.txt; sourceTree = SOURCE_ROOT; };
+		C60000010000000000000001 /* CloudConnectionCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/CloudConnectionCheck.swift; sourceTree = SOURCE_ROOT; };
+		C60000010000000000000003 /* route-door.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = App/Resources/Practice/route-door.jpg; sourceTree = SOURCE_ROOT; };
+		00000026AA26000000000001 /* advance-one-step.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = App/Resources/advance-one-step.caf; sourceTree = SOURCE_ROOT; };
 		109AFC6EBBB7C092041BA9B3 /* App/SignVision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SignVision.swift; sourceTree = SOURCE_ROOT; };
 		1DD11368283FACE95D389948 /* App/Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/Camera.swift; sourceTree = SOURCE_ROOT; };
 		470C08A85A402ECACAD029FE /* App/Resources/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = App/Resources/Assets.xcassets; sourceTree = SOURCE_ROOT; };
@@ -56,6 +82,7 @@
 		6890FE5EDA0A77D8E9B12D36 /* PathSenseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PathSenseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ScanGate.swift; sourceTree = SOURCE_ROOT; };
 		BCBE73E1465C77BAAF4E0B30 /* Core/CueDelivery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/CueDelivery.swift; sourceTree = SOURCE_ROOT; };
+		EA988613A4236D55AB136059 /* Core/StepExecution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/StepExecution.swift; sourceTree = SOURCE_ROOT; };
 		C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/PassageEvidence.swift; sourceTree = SOURCE_ROOT; };
 		2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SimulatorEvidence.swift; sourceTree = SOURCE_ROOT; };
 		97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/DeviceDiagnostics.swift; sourceTree = SOURCE_ROOT; };
@@ -100,12 +127,30 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXVariantGroup section */
+        C80000010000000000000007 /* InfoPlist.strings */ = {
+            isa = PBXVariantGroup;
+            children = (C80000010000000000000005, C80000010000000000000006);
+            name = InfoPlist.strings;
+            sourceTree = "<group>";
+        };
+/* End PBXVariantGroup section */
+
 /* Begin PBXGroup section */
 		64292B1C2B2E13EAD8788FC8 = {
 			isa = PBXGroup;
 			children = (
+                C80000010000000000000007 /* InfoPlist.strings */,
+                C90000010000000000000001 /* Core/LocalMapping.swift */,
+                C80000010000000000000001 /* Core/GuidanceLanguage.swift */,
+                C80000010000000000000003 /* deepseek-demo-en-v1.txt */,
+				C70000010000000000000007 /* App/Resources/deepseek-demo-v1.txt */,
+				C70000010000000000000005 /* App/DoorDemoView.swift */,
+				C70000010000000000000003 /* App/DoorDemoSession.swift */,
+				C70000010000000000000001 /* Core/DemoGuide.swift */,
 				6D9BEC5A4D97B170280C1A3A /* Core/ScanGate.swift */,
 				BCBE73E1465C77BAAF4E0B30 /* Core/CueDelivery.swift */,
+				EA988613A4236D55AB136059 /* Core/StepExecution.swift */,
 				C1DA88AC9D2F28A78AE05392 /* Core/PassageEvidence.swift */,
 				2FBF5E7991C4C457CBF337E1 /* App/SimulatorEvidence.swift */,
 				97CF26A701C0C191CD80CDB8 /* App/DeviceDiagnostics.swift */,
@@ -113,6 +158,9 @@
 				CA82362FBDD5296023F93EAB /* Core/LocalMaps.swift */,
 				754625581DB54B3F8655AEF2 /* App/DestinationMicrophone.swift */,
 				804E9F4FF55371A18F7CE85A /* App/NearVision.swift */,
+				C60000010000000000000001 /* CloudConnectionCheck.swift */,
+				C60000010000000000000003 /* route-door.jpg */,
+				C60000010000000000000005 /* deepseek-planner-v2.txt */,
 				351ACC6AC00DE5CC3C38D9BE /* App/CloudClient.swift */,
 				BCCF25A83251C1A125E19E60 /* Core/CloudContract.swift */,
 				6040BBC385F8A1528DC561A9 /* Core/LocalRoute.swift */,
@@ -131,6 +179,7 @@
 				803FFEF42B28465998297010 /* App/Design.swift */,
 				9720F86F5984AACA8FCA9A6C /* App/Views.swift */,
 				56CE2F1DE8E6AD6CE5936396 /* App/Resources/SignContext.mlmodel */,
+				00000026AA26000000000001 /* advance-one-step.caf */,
 				470C08A85A402ECACAD029FE /* App/Resources/Assets.xcassets */,
 				E45A697CC9BE8FBCBF1B8499 /* App/Resources/Practice */,
 				D90D563818CF0CC4A750592F /* UITests/PathSenseUITests.swift */,
@@ -208,6 +257,7 @@
 			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
+                "zh-Hans",
 				en,
 				"zh-Hans",
 				Base,
@@ -228,6 +278,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+                C80000010000000000000008 /* InfoPlist.strings in Resources */,
+                C80000010000000000000004 /* deepseek-demo-en-v1.txt in Resources */,
+				C70000010000000000000008 /* App/Resources/deepseek-demo-v1.txt in Resources */,
+				C60000010000000000000004 /* route-door.jpg in Resources */,
+				C60000010000000000000006 /* deepseek-planner-v2.txt in Resources */,
+				00000026AA26000000000002 /* advance-one-step.caf in Resources */,
 				6ED274FCB0820C2C129D1CDD /* App/Resources/Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -247,8 +303,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C70000010000000000000006 /* App/DoorDemoView.swift in Sources */,
+				C70000010000000000000004 /* App/DoorDemoSession.swift in Sources */,
+                C90000010000000000000002 /* Core/LocalMapping.swift in Sources */,
+                C80000010000000000000002 /* Core/GuidanceLanguage.swift in Sources */,
+				C70000010000000000000002 /* Core/DemoGuide.swift in Sources */,
 				356D42E61CCAD9A5D3748E48 /* Core/ScanGate.swift in Sources */,
 				763AC81D3311A5D17BB12A13 /* Core/CueDelivery.swift in Sources */,
+				5EA1CD1E84F8CA04E9BA5C1C /* Core/StepExecution.swift in Sources */,
 				8A4B86C7E50B2CEB1C36C994 /* Core/PassageEvidence.swift in Sources */,
 				50CCBAC2F1777472B8DFC4E8 /* App/SimulatorEvidence.swift in Sources */,
 				71D3A6820F13286A4A78236D /* App/DeviceDiagnostics.swift in Sources */,
@@ -256,6 +318,7 @@
 				11DCD0CDC7C047137B7EFDD9 /* Core/LocalMaps.swift in Sources */,
 				5A4EC1F3D8D2F358B0CF5B1A /* App/DestinationMicrophone.swift in Sources */,
 				C48F94A7B6996C55DFAC8993 /* App/NearVision.swift in Sources */,
+				C60000010000000000000002 /* CloudConnectionCheck.swift in Sources */,
 				4F4472564AD8CEB82B99A6B7 /* App/CloudClient.swift in Sources */,
 				72015CEC820023BBFF1E0615 /* Core/CloudContract.swift in Sources */,
 				2E661F26A40E4196956690CC /* Core/LocalRoute.swift in Sources */,
@@ -301,7 +364,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COREML_CODEGEN_LANGUAGE = Swift;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = PathSense;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -311,7 +374,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -328,7 +391,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -352,7 +415,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -367,7 +430,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COREML_CODEGEN_LANGUAGE = Swift;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = PathSense;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -377,7 +440,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -394,7 +457,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -418,7 +481,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_TESTABILITY = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

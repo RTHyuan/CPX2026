@@ -30,7 +30,8 @@ import Speech
     }
 
     private var report = Diagnostics()
-    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))
+    private var language: GuidanceLanguage = .chinese
+    private var recognizer: SFSpeechRecognizer?
     private let audio = AVAudioSession.sharedInstance()
     private var engine: AVAudioEngine?, tappedInput: AVAudioInputNode?, feed: DestinationAudioFeed?
     private var task: SFSpeechRecognitionTask?, timer: Task<Void, Never>?
@@ -39,9 +40,11 @@ import Speech
     private var candidate: String?, lastTextAt: TimeInterval = 0
     private var completion: ((String?, String?) -> Void)?
 
-    func start(ready: @escaping () -> Void = {}, partial: @escaping (String) -> Void,
+    func start(language: GuidanceLanguage = .chinese, ready: @escaping () -> Void = {}, partial: @escaping (String) -> Void,
                finish: @escaping (String?, String?) -> Void) {
         cancel()
+        self.language = language
+        recognizer = SFSpeechRecognizer(locale: Locale(identifier: language.speechLocale))
         let id = UUID()
         epoch = id
         feed = nil
@@ -57,23 +60,29 @@ import Speech
             }
             guard let self, self.epoch == id else { return }
             guard speech == .authorized else {
-                self.complete("speechPermission", message: "请在设置中允许语音识别，或输入目的地。")
+                self.complete("speechPermission", message: self.text("请在设置中允许语音识别，或输入目的地。",
+                                                                     "Allow speech recognition in Settings, or type your destination."))
                 return
             }
             let allowed = await AVAudioApplication.requestRecordPermission()
             guard self.epoch == id else { return }
             guard allowed else {
-                self.complete("microphonePermission", message: "请在设置中允许麦克风，或输入目的地。")
+                self.complete("microphonePermission", message: self.text("请在设置中允许麦克风，或输入目的地。",
+                                                                         "Allow microphone access in Settings, or type your destination."))
                 return
             }
-            guard let recognizer = self.recognizer, recognizer.locale.language.languageCode == .chinese,
+            guard let recognizer = self.recognizer,
+                  recognizer.locale.language.languageCode?.identifier == (language == .chinese ? "zh" : "en"),
                   recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else {
-                self.complete("localRecognizerUnavailable", message: "本机中文听写暂不可用，请输入目的地。")
+                self.complete("localRecognizerUnavailable", message: self.text("本机中文听写暂不可用，请输入目的地。",
+                                                                               "On-device English dictation is unavailable. Please type your destination."))
                 return
             }
             self.open(recognizer, id: id, ready: ready, partial: partial)
         }
     }
+
+    private func text(_ chinese: String, _ english: String) -> String { language.text(chinese, english) }
 
     private func open(_ recognizer: SFSpeechRecognizer, id: UUID, ready: () -> Void,
                       partial: @escaping (String) -> Void) {
@@ -89,7 +98,8 @@ import Speech
             report.inputChannels = Int(format.channelCount)
             report.sampleRate = format.sampleRate
             guard hardware.sampleRate > 0, hardware.channelCount > 0, format.sampleRate > 0, format.channelCount > 0 else {
-                complete("invalidInputFormat", message: "没有可用的麦克风输入，请检查音频设备。")
+                complete("invalidInputFormat", message: text("没有可用的麦克风输入，请检查音频设备。",
+                                                              "No microphone input is available. Check your audio device."))
                 return
             }
             let request = SFSpeechAudioBufferRecognitionRequest()
@@ -98,8 +108,8 @@ import Speech
             request.taskHint = .search
             let feed = DestinationAudioFeed(request)
             self.feed = feed
-            stage = "installTap"
-            if #available(iOS 27.0, *) { report.tapAPI = "installAudioTap" } else { report.tapAPI = "installTap" }
+            stage = "installAudioTap"
+            report.tapAPI = "installAudioTap"
             try feed.install(on: input)
             tappedInput = input
             // A serial main queue preserves Speech's callback order relative to finish/cancel.
@@ -117,7 +127,8 @@ import Speech
             ready()
         } catch {
             record(error)
-            complete(stage, message: "麦克风暂不可用，请检查音频设备或输入目的地。")
+            complete(stage, message: text("麦克风暂不可用，请检查音频设备或输入目的地。",
+                                           "The microphone is unavailable. Check your audio device, or type your destination."))
         }
     }
 
@@ -194,14 +205,7 @@ import Speech
                 self.drain("interruption")
             }
         }
-        if #available(iOS 27.0, *) {
-            observers.append(center.addObserver(forName: AVAudioSession.didBecomeInactiveNotification, object: audio, queue: nil) { @Sendable _ in interrupted() })
-        } else {
-            observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: audio, queue: nil) { @Sendable note in
-                if let type = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                   type == AVAudioSession.InterruptionType.began.rawValue { interrupted() }
-            })
-        }
+        observers.append(center.addObserver(forName: AVAudioSession.didBecomeInactiveNotification, object: audio, queue: nil) { @Sendable _ in interrupted() })
         observers.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { @Sendable [weak self] _ in
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.epoch == id, let input = self.tappedInput else { return }
@@ -251,13 +255,16 @@ import Speech
             callback(nil, message)
         } else if snapshot.appendedFrameCount == 0 {
             report.outcome = snapshot.bufferCount == 0 ? "noBuffers" : "noAppendedAudio"
-            callback(nil, "没有收到可识别的麦克风音频，请重试或输入目的地。")
+            callback(nil, self.text("没有收到可识别的麦克风音频，请重试或输入目的地。",
+                                    "No usable microphone audio was received. Try again, or type your destination."))
         } else if snapshot.signalBufferCount == 0 {
             report.outcome = "lowSignal"
-            callback(nil, "麦克风输入声音很轻，请靠近麦克风重试。")
+            callback(nil, self.text("麦克风输入声音很轻，请靠近麦克风重试。",
+                                    "The microphone input is too quiet. Move closer to the microphone and try again."))
         } else {
             report.outcome = "noUsableWords"
-            callback(nil, "已收到声音，未识别出目的地，请重试或输入目的地。")
+            callback(nil, self.text("已收到声音，未识别出目的地，请重试或输入目的地。",
+                                    "Audio was received, but the destination was not recognized. Try again, or type it."))
         }
     }
 
@@ -277,11 +284,12 @@ import Speech
         stopInput()
         if cancelTask { task?.cancel() }
         task = nil
+        recognizer = nil
         candidate = nil
     }
 }
 
-/// The tap closures are created outside MainActor, including the iOS 26 non-Sendable ObjC block.
+/// The audio tap delivers buffers outside MainActor.
 /// All conversion, metering, append and endAudio calls run on a single serial worker.
 nonisolated private final class DestinationAudioFeed: @unchecked Sendable {
     struct Meter: Sendable {
@@ -297,22 +305,13 @@ nonisolated private final class DestinationAudioFeed: @unchecked Sendable {
     init(_ request: SFSpeechAudioBufferRecognitionRequest) { self.request = request }
 
     func install(on input: AVAudioInputNode) throws {
-        if #available(iOS 27.0, *) {
-            try input.installAudioTap(onBus: 0, bufferSize: 1024, format: nil) { [self] buffer, _ in
-                guard reserve() else { return }
-                queue.async {
-                    let owned = buffer.withUnsafeAudioBufferList {
-                        Self.copyPCM($0, format: buffer.format, frames: buffer.frameLength)
-                    }
-                    self.consume(owned?.pcm)
+        try input.installAudioTap(onBus: 0, bufferSize: 1024, format: nil) { [self] buffer, _ in
+            guard reserve() else { return }
+            queue.async {
+                let owned = buffer.withUnsafeAudioBufferList {
+                    Self.copyPCM($0, format: buffer.format, frames: buffer.frameLength)
                 }
-            }
-        } else {
-            input.installTap(onBus: 0, bufferSize: 1024, format: nil) { @Sendable [self] buffer, _ in
-                guard reserve() else { return }
-                // The legacy tap can reuse its memory as soon as this closure returns.
-                let owned = Self.copyPCM(buffer.audioBufferList, format: buffer.format, frames: Int(buffer.frameLength))
-                queue.async { self.consume(owned?.pcm) }
+                self.consume(owned?.pcm)
             }
         }
     }

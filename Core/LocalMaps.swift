@@ -109,13 +109,16 @@ struct PriorMap: Codable {
 }
 
 struct WalkMeasures: Encodable {
+    struct PlanEvent: Encodable { let frame: FrameID, box: ImageBox, landmark: Int, directive: PlannerDirective, receivedAt: FrameID }
+    var plans: [PlanEvent] = []
+    var stepEvents: [StepEvent] = []
     struct Stop: Encodable { let detectedAt: Double; var requestedAt, speechStarted, speechEnded: Double? }
     private(set) var started: Double?, finished: Double?, fullScans = 0, peakSameStationSweeps = 0, stops: [Stop] = []
     private(set) var arrivedDoor: Int?, firstDoor: Int?, changedDoor = false, manuallyConfirmed = false
     private(set) var activeSeconds = 0.0, segments = 0, identityContinuous = true
     private var segmentStart: Double?, doorWorld: FrameID?
     private var scanOrigin: V3?, lastHeading: Double?, turnSum = 0.0, stationSweeps = 0, world: FrameID?
-    enum CodingKeys: String, CodingKey { case started, finished, activeSeconds, segments, identityContinuous, fullScans, peakSameStationSweeps, stops, firstDoor, arrivedDoor, changedDoor, manuallyConfirmed }
+    enum CodingKeys: String, CodingKey { case plans, stepEvents, started, finished, activeSeconds, segments, identityContinuous, fullScans, peakSameStationSweeps, stops, firstDoor, arrivedDoor, changedDoor, manuallyConfirmed }
     mutating func start(_ t:Double) { self=Self(); started=t }
     mutating func openSegment(at time: Double) {
         if started == nil { start(time) }

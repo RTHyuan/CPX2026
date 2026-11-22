@@ -87,6 +87,8 @@ private extension FramePose {
 final class GroundAssessment {
     private var previous: (pose: FramePose, image: FloorImage)?
     private var floorHeight: Double?
+    private var viewpoints: [(pose: FramePose, image: FloorImage)] = []
+    private var visualBody = StepBodySurvey()
     private var lidar = LidarPassage()
     private let distances = [0.75, 1.10, 1.50, 1.85]
     private let laterals = [-0.27, 0.0, 0.27]
@@ -102,11 +104,14 @@ final class GroundAssessment {
                                 personOK: personOK, exposed: image?.exposed == true, image: image)
         }
         lidar = LidarPassage()
+        visualBody.expire(at: p)
+        viewpoints.removeAll { !$0.pose.id.sameWorld(p.id) || p.time - $0.pose.time > 0.5 }
         let planes = planes.filter { $0.surface != .nonFloor }
         var field = unassessed(p, observations)
         guard let image, image.visible, p.normal else {
             previous = nil
             floorHeight = nil
+            if !p.normal { visualBody = StepBodySurvey(); viewpoints.removeAll() }
             field.reason = "画面或位置追踪不清。"
             return field
         }
@@ -114,6 +119,11 @@ final class GroundAssessment {
         field.canCoachFraming = personOK
         let prior = previous
         previous = (p, image)
+        let secondView = viewpoints.last { reference in
+            comparable(reference.pose, p, angle: 10, displacement: 0.20) && reference.pose.position.groundDistance(p.position) >= 0.04
+        }
+        if viewpoints.last?.pose.id != p.id { viewpoints.append((p, image)) }
+        if viewpoints.count > 10 { viewpoints.removeFirst() }
         let priorView = prior.flatMap { comparable($0.pose, p, angle: 10, displacement: 0.23) ? $0 : nil }
         // Only a surface reaching the observer can establish the approach level. A landing seen
         // across an opening must not become the assumed ground beneath the camera.
@@ -165,6 +175,32 @@ final class GroundAssessment {
             if mobile { sector.state = .occupied }
             field.sectors[i] = sector
         }
+        guard let center = field.sectors.firstIndex(where: { $0.angle == 0 }), let ground,
+              personOK, ground.surface == .floor || (1.10...1.95).contains(p.position.y-ground.y),
+              field.sectors[center].state != .occupied, field.sectors[center].stepEvidence != .conflictingPlanes else {
+            visualBody = StepBodySurvey()
+            return field
+        }
+        // A normal camera cannot frame the floor and an adult's head at every holding angle.
+        // At this station combine only sites individually seen in two matching, translated views.
+        let pair = secondView.map { reference -> VisualStepRays in
+            let matches = features.compactMap { point -> VisualStepRays.Match? in
+                guard let here = inView(point, p), let there = inView(point, reference.pose),
+                      agrees(image, at: here, with: reference.image, at: there) else { return nil }
+                return .init(point: point, u: here.0, v: here.1, oldU: there.0, oldV: there.1)
+            }
+            return .init(pose: p, peer: reference.pose, ground: ground, matches: matches)
+        }
+        let axes = StripAxes(p, 0), sites = StepVolume.sites(p, axes.along, axes.across, ground.y)
+        let witnesses = visualBody.observe(sites, at: p, level: ground.y, peer: secondView?.pose) { site in
+            pair?.seesThrough(site) == true
+        }
+        if var coverage = field.sectors[center].stepCoverage {
+            coverage.body = witnesses != nil; coverage.bodyFrame = witnesses?.oldest.id; coverage.bodyTime = witnesses?.oldest.time
+            coverage.bodyFrames = witnesses?.frames; coverage.checkedBodySites = visualBody.checkedSites
+            field.sectors[center].stepCoverage = coverage
+        }
+        if let pair, field.reason == nil { field.liveStepView = LiveStepView(pair) }
         return field
     }
 
@@ -173,6 +209,7 @@ final class GroundAssessment {
         // On a monocular-to-depth transition a matched, reprojected previous image and near
         // plane can corroborate a fully measured current strip. Live LiDAR uses depth/depth pairs.
         let prior = previous, priorLevel = floorHeight
+        visualBody = StepBodySurvey(); viewpoints.removeAll()
         previous = nil
         floorHeight = nil
         return lidar.inspect(p, depth: depth, planes: planes, observations: observations, personOK: personOK,
@@ -241,6 +278,19 @@ final class GroundAssessment {
             }
         }
         sector.state = .free
+        // A positive visual-inertial fallback requires the close floor and actual feature rays
+        // reaching behind the walking volume in two views. Empty space between sparse features is unknown.
+        guard sector.angle == 0 else { return }
+        func floorSeen(_ depths: [Double]) -> Bool {
+            depths.allSatisfy { d in [-0.24, -0.12, 0, 0.12, 0.24].allSatisfy { x in
+                let site = p.position + aim * d + side * x, q = V3(site.x, ground.y, site.z)
+                guard ground.contains(q), let uv = inView(q, p), let ab = inView(q, previous.pose),
+                      agrees(image, at: uv, with: previous.image, at: ab) else { return false }
+                return features.contains { abs($0.y - ground.y) < 0.05 && $0.groundDistance(q) <= 0.11 }
+            } }
+        }
+        let near = floorSeen([0.30, 0.46]), landing = floorSeen([0.62, 0.78, 0.96])
+        sector.stepCoverage = StepCoverage(source: .multiView, nearGround: near, landing: landing, body: false)
     }
 
     private func agrees(_ current: FloorImage, at uv: (Double, Double), with prior: FloorImage, at ab: (Double, Double),
@@ -307,6 +357,20 @@ struct LidarDepthFrame {
         self.ranges = ranges
     }
 
+    fileprivate func measuresFloor(_ point: V3, at p: FramePose) -> Bool {
+        guard let uv = p.project(point) else { return false }
+        let (u,v) = p.sensor(uv.0,uv.1)
+        guard (0.02...0.98).contains(u), (0.02...0.98).contains(v) else { return false }
+        let x = Int(u * Double(columns)), y = Int(v * Double(rows))
+        guard x > 0, x < columns-1, y > 0, y < rows-1 else { return false }
+        let expected = Float((point - p.position).dot(p.forward))
+        var agreeing = 0
+        for j in (y-1)...(y+1) { for i in (x-1)...(x+1) {
+            if abs(ranges[j * columns + i] - expected) < 0.06 { agreeing += 1 }
+        } }
+        return agreeing >= 5
+    }
+
     /// Clearance through a body-volume site also needs rays reaching at least that far.
     /// A nearer occluder or a blind depth region cannot be filled from visible floor behind it.
     fileprivate func seesThrough(_ point: V3, at p: FramePose) -> Bool {
@@ -324,11 +388,111 @@ struct LidarDepthFrame {
     }
 }
 
+/// Pixel-matched AR features at two capture poses. A distant feature only witnesses a
+/// body sample when its ray passes the same site in both images.
+struct VisualStepRays {
+    struct Match { let point: V3, u: Double, v: Double, oldU: Double, oldV: Double }
+    let pose: FramePose, peer: FramePose, ground: FloorPatch, matches: [Match]
+    func measuresFloor(_ site: V3) -> Bool {
+        ground.contains(site) && abs(ground.y-site.y) < 0.045 && matches.contains {
+            abs($0.point.y-site.y) < 0.045 && site.groundDistance($0.point) <= 0.11
+        }
+    }
+    func seesThrough(_ site: V3) -> Bool {
+        guard let here = pose.project(site), let there = peer.project(site),
+              (0.025...0.975).contains(there.0), (0.025...0.975).contains(there.1) else { return false }
+        let toward = pose.forward, earlier = peer.forward
+        var left = false, right = false
+        for match in matches where hypot(match.u-here.0, match.v-here.1) < 0.035 && hypot(match.oldU-there.0, match.oldV-there.1) < 0.035 {
+            let beyond = match.point-site
+            guard beyond.dot(toward) > 0.12, beyond.dot(earlier) > 0.12 else { continue }
+            if match.u < here.0 { left = true } else if match.u > here.0 { right = true }
+            if left && right { return true }
+        }
+        return false
+    }
+}
+
+/// Keep a body-height sample across a pitch sweep at the same station. A newer in-frame
+/// observation that cannot confirm the sample invalidates its immediately preceding witness.
+struct StepBodySurvey {
+    private struct Witness { let pose: FramePose, first: FramePose, level: Double, site: V3 }
+    private var witnesses: [Int: Witness] = [:]
+    var checkedSites: UInt32 { witnesses.keys.reduce(0) { $0 | (1 << $1) } }
+    mutating func expire(at pose: FramePose) {
+        witnesses = witnesses.filter { _, w in
+            w.pose.id.sameWorld(pose.id) && (0...0.65).contains(pose.time-w.first.time) &&
+                (pose.position-w.pose.position).length < 0.055 && abs(turnAngle(pose.heading-w.pose.heading)) < 5
+        }
+    }
+    mutating func observe(_ sites: [V3], at pose: FramePose, level: Double, peer: FramePose? = nil,
+                          through: (V3) -> Bool) -> (oldest: FramePose, frames: [FrameID])? {
+        for (index, site) in sites.enumerated() {
+            if let uv = pose.project(site), (0.025...0.975).contains(uv.0), (0.025...0.975).contains(uv.1) {
+                witnesses[index] = through(site) ? .init(pose: pose, first: peer ?? pose, level: level, site: site) : nil
+            } else if let old = witnesses[index], abs(old.level-level) >= 0.045 || (old.site-site).length >= 0.065 {
+                witnesses[index] = nil
+            }
+        }
+        guard witnesses.count == sites.count, let oldest = witnesses.values.min(by: { $0.first.time < $1.first.time })?.first else { return nil }
+        let frames = Set(witnesses.values.flatMap { [$0.first.id, $0.pose.id] })
+        return (oldest, frames.sorted { $0.frame < $1.frame })
+    }
+}
+
+/// Current confidence-filtered rays, kept only in local recent observation history. These may monitor
+/// the remainder of a spoken permit, never create a new one or extend its inspected footprint.
+struct LiveStepView {
+    private enum Samples { case depth(LidarDepthFrame), visual(VisualStepRays) }
+    private let samples: Samples, capture: FrameID, level: Double
+    fileprivate init(depth: LidarDepthFrame, level: Double) { samples = .depth(depth); capture = depth.capture; self.level = level }
+    fileprivate init(_ pair: VisualStepRays) { samples = .visual(pair); capture = pair.pose.id; level = pair.ground.y }
+    private func measuresFloor(_ q: V3, at p: FramePose) -> Bool {
+        switch samples { case .depth(let d): return d.measuresFloor(q, at: p); case .visual(let v): return v.measuresFloor(q) }
+    }
+    private func seesThrough(_ q: V3, at p: FramePose) -> Bool {
+        switch samples { case .depth(let d): return d.seesThrough(q, at: p); case .visual(let v): return v.seesThrough(q) }
+    }
+    func watches(_ permit: StepPermit, at p: FramePose) -> Bool {
+        let check = permit.spokenCheck ?? permit.check, origin = permit.check.origin
+        guard p.normal, capture == p.id, p.id.sameWorld(origin.id), let started = permit.spokenAt,
+              p.time >= started, let oldestBody = check.coverage.compactMap(\.bodyTime).max(),
+              abs(turnAngle(p.heading - origin.heading)) <= 16 else { return false }
+        let axis = StripAxes(origin,0), progress = (p.position-origin.position).dot(axis.along)
+        func visible(_ q: V3) -> Bool {
+            guard let uv = p.project(q) else { return false }
+            return (0.035...0.965).contains(uv.0) && (0.035...0.965).contains(uv.1)
+        }
+        for x in [-0.23, 0.0, 0.23] {
+            var floors = 0, volume = 0, high = false
+            for d in [0.30,0.46,0.62,0.78,0.96] where d > progress + 0.055 {
+                let site = origin.position + axis.along*d + axis.across*x
+                let foot = V3(site.x,level,site.z)
+                if visible(foot) { guard measuresFloor(foot, at:p) else { return false }; floors += 1 }
+            }
+            for d in [0.56,0.90] where d > progress + 0.055 {
+                let site = origin.position + axis.along*d + axis.across*x
+                for h in check.footprint.bodyHeights {
+                    let q = V3(site.x,level+h,site.z)
+                    if visible(q) {
+                        guard seesThrough(q, at:p) else { return false }
+                        volume += 1; if h >= 1.05 { high = true }
+                    } else if p.time - oldestBody > 1.50 { return false }
+                }
+            }
+            guard floors > 0, volume >= 2, high else { return false }
+        }
+        return true
+    }
+}
+
 private struct LidarPassage {
     private var newest: (id: FrameID, time: Double)?
     private var previous: (pose: FramePose, level: Double, clear: Set<Int>)?
     // A prior level may veto a sudden rebase at the same station. It cannot supply missing returns.
     private var station: (pose: FramePose, level: Double)?
+    // At the same station a slightly raised view can observe torso height before the close floor is framed.
+    private var bodySurvey = StepBodySurvey()
 
     /// A classified floor at the observer supplies a level, never clearance. An unclassified
     /// horizontal anchor might be furniture: require the same local support as for no anchor.
@@ -387,6 +551,8 @@ private struct LidarPassage {
         newest = (p.id, p.time)
         let prior = previous
         previous = nil
+        bodySurvey.expire(at: p)
+        if !p.normal { bodySurvey = StepBodySurvey(); station = nil }
         guard exposed, p.hasDepthCalibration, p.normal else { field.reason = "画面或位置追踪不清。"; return field }
         field.canCoachFraming = personOK
         let hits = depth?.capture == p.id ? depth?.hits ?? [] : []
@@ -403,6 +569,7 @@ private struct LidarPassage {
             previousClear = prior.clear
         }
         let excluded = planes.filter { $0.surface == .nonFloor }
+        if !personOK || !exposed || hits.isEmpty || level == nil { bodySurvey = StepBodySurvey() }
         let steps = observations.filter { $0.kind == .steps && $0.box.valid }
         var clear = Set<Int>()
         for i in field.sectors.indices {
@@ -421,6 +588,17 @@ private struct LidarPassage {
                     if box.valid { field.hazards.append(.init(kind: .steps, box: box, confidence: 0.85)) }
                 }
             }
+            if sector.angle == 0 {
+                if mobile || sector.nearest != nil || strip.hasConflict { bodySurvey = StepBodySurvey() }
+                else if let depth, let level, personOK, !hits.isEmpty {
+                    if field.reason == nil { field.liveStepView = LiveStepView(depth: depth, level: level) }
+                    let sites = StepVolume.sites(p, axes.along, axes.across, level)
+                    let witnesses = bodySurvey.observe(sites, at: p, level: level) { depth.seesThrough($0, at: p) }
+                    sector.stepCoverage = .init(source: .lidar, nearGround: strip.floorCovered(rows: 1..<3),
+                        landing: strip.floorCovered(rows: 3..<6), body: witnesses != nil, bodyFrame: witnesses?.oldest.id,
+                        bodyTime: witnesses?.oldest.time, bodyFrames: witnesses?.frames, checkedBodySites: bodySurvey.checkedSites)
+                }
+            }
             if mobile || sector.nearest != nil { sector.state = .occupied }
             else if field.reason == nil, let level, let depth, strip.hasClearance(p, axes, level, depth) {
                 clear.insert(sector.angle)
@@ -433,6 +611,15 @@ private struct LidarPassage {
             if station == nil, field.sectors.contains(where: { $0.state == .free || $0.hasMeasuredDrop }) { station = (p, level) }
         }
         return field
+    }
+}
+
+private enum StepVolume {
+    static func sites(_ p: FramePose, _ along: V3, _ across: V3, _ level: Double) -> [V3] {
+        [0.56, 0.90].flatMap { d in [-0.22, 0.0, 0.22].flatMap { x in
+            let site = p.position + along * d + across * x
+            return StepFootprint().bodyHeights.map { V3(site.x, level + $0, site.z) }
+        } }
     }
 }
 
@@ -481,6 +668,13 @@ private struct LidarStrip {
                     obstacle = min(obstacle ?? .infinity, cells[index].nearest)
                 }
             }
+        }
+    }
+
+    var hasConflict: Bool { disputed }
+    func floorCovered(rows: Range<Int>) -> Bool {
+        !disputed && rows.allSatisfy { r in
+            (0..<Self.columns).allSatisfy { c in cells[r * Self.columns + c].flat.nonzeroBitCount >= 3 }
         }
     }
 

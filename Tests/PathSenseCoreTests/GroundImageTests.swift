@@ -97,6 +97,84 @@ final class GroundImageTests: XCTestCase {
         XCTAssertEqual(lost.front, .unknown)
     }
 
+    /// The RTR JPEG supplies only the pixels. The two camera baselines and dense floor/wall points
+    /// are injected to test how independent observations are combined, not ARKit's reconstruction.
+    func testRealStillAndControlledFeaturesRetainUpperSitesButMissingPixelMatchesCannotCertifyTheStep() throws {
+        let image = try recorded(.lectureTheatre), engine = GroundAssessment()
+        var cloud: [V3] = []
+        for column in -48...48 {
+            let x = Double(column)/25
+            for depth in 4...100 { cloud.append(V3(x, 0, -Double(depth)/25)) }
+            for row in 0...125 { cloud.append(V3(x, Double(row)/25, -3)) }
+        }
+        func feed(_ i: Int, _ tilt: Double, _ z: Double) -> NearField {
+            var capture = pose(i, pitch: tilt)
+            capture.transform[14] = z
+            return engine.inspect(image: image, pose: capture, planes: [floor], features: cloud, observations: [], personOK: true)
+        }
+        _ = feed(0, -14, -0.045)
+        _ = feed(1, -14, 0)
+        _ = feed(2, 49, -0.045)
+        _ = feed(3, 49, 0)
+        let checked = try XCTUnwrap(front(feed(4, 49, 0)).stepCoverage)
+        XCTAssertEqual(checked.source, .multiView)
+        XCTAssertTrue(checked.nearGround); XCTAssertTrue(checked.landing)
+        let headSites = [4, 9, 14, 19, 24, 29]
+        let observed = try XCTUnwrap(checked.checkedBodySites)
+        XCTAssertTrue(headSites.allSatisfy { observed & (1 << $0) != 0 })
+        // A repeated field photo is not a measured stereo pair. Some low sites have no
+        // matching pixels, even with this injected dense point cloud, so it cannot grant a step.
+        XCTAssertFalse(checked.body); XCTAssertFalse(checked.complete)
+        // Repeating a single downward photo and pose after the time limit cannot recreate the upper evidence.
+        _ = feed(13, 49, 0)
+        let expired = try XCTUnwrap(front(feed(14, 49, 0)).stepCoverage)
+        XCTAssertFalse(expired.complete); XCTAssertFalse(expired.body)
+        XCTAssertTrue(headSites.allSatisfy { (expired.checkedBodySites ?? 0) & (1 << $0) == 0 })
+    }
+
+    /// Analytic matched feature rays model a floor and a distant wall. No RGB image, optical
+    /// flow or physical ARKit result is claimed by this geometry-only replay.
+    func testAnalyticMatchedRaysCanCompleteAndRevokeTheMultiViewBodySurvey() throws {
+        var survey = StepBodySurvey()
+        func feed(_ i: Int, pitch: Double, matching: Bool = true) -> (oldest: FramePose, frames: [FrameID])? {
+            let p = pose(i, pitch: pitch)
+            var peer = pose(i-1, pitch: pitch)
+            peer.transform[14] = 0.045
+            var sites: [V3] = []
+            for distance in [0.56, 0.90] {
+                for lateral in [-0.22, 0.0, 0.22] {
+                    for height in StepFootprint().bodyHeights { sites.append(V3(lateral, height, -distance)) }
+                }
+            }
+            var matches: [VisualStepRays.Match] = []
+            if matching {
+                for site in sites {
+                    guard let uv = p.project(site) else { continue }
+                    for offset in [-0.006, 0.006] {
+                        let direction = p.ray(uv.0 + offset, uv.1)
+                        let toFloor = direction.y < 0 ? -p.position.y/direction.y : .infinity
+                        let toWall = direction.z < 0 ? -3/direction.z : .infinity
+                        let distance = min(toFloor, toWall)
+                        guard distance.isFinite else { continue }
+                        let point = p.position + direction * distance
+                        guard let old = peer.project(point) else { continue }
+                        matches.append(.init(point: point, u: uv.0 + offset, v: uv.1, oldU: old.0, oldV: old.1))
+                    }
+                }
+            }
+            let rays = VisualStepRays(pose: p, peer: peer, ground: floor, matches: matches)
+            survey.expire(at: p)
+            return survey.observe(sites, at: p, level: 0, peer: peer) { rays.seesThrough($0) }
+        }
+        XCTAssertNil(feed(1, pitch: -14))
+        let combined = feed(3, pitch: 49)
+        let missing = (0..<30).filter { survey.checkedSites & (1 << $0) == 0 }
+        let checked = try XCTUnwrap(combined, "Missing matched sites \(missing)")
+        XCTAssertEqual(checked.oldest.id, pose(0).id)
+        XCTAssertEqual(checked.frames, [0,1,2,3].map { pose($0).id })
+        XCTAssertNil(feed(4, pitch: 49, matching: false))
+    }
+
     func testRealRTRLockerBandsAndCoarseCategoryNeedIndependentGeometry() throws {
         let sign = try recorded(.overheadSign)
         XCTAssertTrue(sign.hasHorizontalBands)
@@ -224,7 +302,7 @@ final class GroundImageTests: XCTestCase {
         XCTAssertEqual(nav.book.records.filter { $0.label == "BSG33" }.count, 1)
     }
 
-    func testRealRTRPixelsThroughGridToBypassAndBodyConfirmation() throws {
+    func testRealRTRPixelsAndInjectedFloorSupportDetourButLeaveBodySpaceUnverified() throws {
         let loop = GroundAssessment(), theatre = try recorded(.lectureTheatre), sign = try recorded(.overheadSign)
         let points = features
         var nav = SpatialNavigator(doorTarget: true), grid = LocalGrid()
@@ -238,11 +316,12 @@ final class GroundImageTests: XCTestCase {
         }
         for i in 0..<7 { _ = feed(i, yaw: 0, geometry: [floor], returns: points) }
         nav.faceForward()
-        XCTAssertEqual(nav.cue()?.kind, .advance)
-        XCTAssertEqual(feed(7, yaw: 0, geometry: [lip, landing], returns: []), .dropStop)
+        XCTAssertEqual(nav.cue(), .inspectStep)
+        XCTAssertNil(nav.activeStep)
+        XCTAssertEqual(feed(7, yaw: 0, geometry: [lip, landing], returns: []), .dropAtRest)
         nav.recheck()
         for i in 8..<14 {
-            XCTAssertEqual(feed(i, yaw: 4, geometry: [], returns: []), .dropStop)
+            XCTAssertEqual(feed(i, yaw: 4, geometry: [], returns: []), .dropAtRest)
             XCTAssertFalse(nav.hasFrontProof)
         }
         for i in 14..<22 {
@@ -252,10 +331,11 @@ final class GroundImageTests: XCTestCase {
         }
         XCTAssertTrue(nav.hasFrontProof)
         XCTAssertNil(nav.frontHazard)
-        XCTAssertEqual(nav.cue()?.kind, .face)
+        XCTAssertEqual(nav.cue(), .inspectStep)
         nav.faceForward()
-        XCTAssertEqual(nav.cue()?.kind, .advance)
-        XCTAssertEqual(feed(22, yaw: 0, geometry: [], returns: []), .dropStop)
+        XCTAssertEqual(nav.cue(), .inspectStep)
+        XCTAssertNil(nav.activeStep)
+        XCTAssertEqual(feed(22, yaw: 0, geometry: [], returns: []), .dropAtRest)
         XCTAssertFalse(nav.canAdvance)
     }
 }

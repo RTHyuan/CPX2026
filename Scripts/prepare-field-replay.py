@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Restore the eight integration replay JPEGs from the local RTR recordings."""
+"""Restore field replay pixels from the original RTR/ZHX recordings and the original room photograph."""
 import argparse
 import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,45 @@ def verify_sha(path, expected):
     if actual != expected:
         raise ValueError(f'{path.name} SHA-256 校验失败（预期 {expected}，实得 {actual}）')
     return actual
+
+
+def prepare_navigation(reader, photos, output, stage):
+    reference = SCRIPTS / 'navigation-field-replay.json'
+    data = json.loads(reference.read_bytes())
+    source = checked_path(photos, data['source'])
+    verify_sha(source, data['sourceSHA256'])
+    rows = data['captures']
+    if not rows or any(b['sourceFrame'] <= a['sourceFrame'] or b['pts'] <= a['pts'] for a, b in zip(rows, rows[1:])):
+        raise ValueError('录像帧序号和展示时间必须严格递增')
+    directory = stage / 'navigation'
+    directory.mkdir()
+    marks = json.dumps([[row['pts'], data['timescale']] for row in rows])
+    actual = analysis['native'](reader, 'extract', source, directory, 10000, 1, marks)
+    frames = {r['frame_index']: r for r in actual['frames'] if r['annotation_ids']}
+    if len(frames) != len(rows):
+        raise ValueError('录像帧数量与时间清单不符')
+    files = []
+    for row in rows:
+        got = frames[row['sourceFrame']]
+        if got['pts']['value'] != row['pts'] or got['pts']['timescale'] != data['timescale'] or any(got[key] != n for key, n in data['size'].items()):
+            raise ValueError('录像帧号、展示时间或像素尺寸不符')
+        jpeg = checked_path(directory, Path(got['jpeg']).name)
+        verify_sha(jpeg, row['sha256'])
+        files.append((jpeg, row['frame']))
+    for photo in data['photos']:
+        original = checked_path(photos, photo['source'])
+        verify_sha(original, photo['sha256'])
+        staged = checked_path(directory, photo['frame'])
+        shutil.copyfile(original, staged)
+        files.append((staged, photo['frame']))
+    for jpeg, name in files:
+        if name != Path(name).name or not name.endswith('.jpg'):
+            raise ValueError('无效的文件名')
+        jpeg.replace(checked_path(output, name))
+    manifest = checked_path(directory, 'navigation-manifest.json')
+    manifest.write_bytes(reference.read_bytes())
+    manifest.replace(checked_path(output, manifest.name))
+    print(f"{len(frames)} 张连续视频帧与 {len(data['photos'])} 张原始照片校验通过，包含源帧号、PTS 和 SHA-256")
 
 
 def prepare():
@@ -61,6 +101,8 @@ def prepare():
             if size != row['size']:
                 raise ValueError(f"{jpeg.name} 尺寸校验失败（预期 {row['size']}，实得 {size}）")
             verify_sha(jpeg, row['sha256'])
+
+        prepare_navigation(reader, photos, output, stage)
 
         # Publish only after every fresh decode has matched the original manifest.
         for name in names:

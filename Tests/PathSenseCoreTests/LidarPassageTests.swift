@@ -262,4 +262,51 @@ final class LidarPassageTests: XCTestCase {
             if i == 2 { XCTAssertEqual(sector(n, -30).state, .free) }
         }
     }
+
+    func testInspectedStepNeedsActualNearFloorAndRaysThroughTheBodyAcrossFreshViews() throws {
+        let engine = GroundAssessment(), floor = horizontal(), anchor = patch(0, z: -4...2, surface: .floor)
+        let wall = panel(at: V3(0,1.55,-3.0), halfWidth: 3, halfHeight: 3.2)
+        let scene = nearest(floor, wall)
+        let glance = inspect(engine, pose(1,pitch:-6), scene, planes:[anchor])
+        XCTAssertEqual(sector(glance,0).stepCoverage?.body, false) // one elevated glance misses the closest low sites
+        XCTAssertNotEqual(sector(glance,0).stepCoverage?.nearGround, true)
+        var close = glance
+        for i in 2...4 { close = inspect(engine, pose(i,pitch:49), scene, planes:[anchor]) }
+        let proof = try XCTUnwrap(sector(close,0).stepCoverage)
+        XCTAssertEqual(close.front,.free); XCTAssertTrue(proof.complete); XCTAssertEqual(proof.source,.lidar)
+        XCTAssertEqual(proof.bodyFrame, glance.pose.id)
+        // Deleting returns over a band immediately in front of the feet cannot be bridged by the far floor.
+        let hole = inspect(engine, pose(5,pitch:49), scene, planes:[anchor], quality: { _,_,q in
+            abs(q.y) < 0.04 && (-0.49 ... -0.25).contains(q.z) ? nil : 2 })
+        XCTAssertFalse(try XCTUnwrap(sector(hole,0).stepCoverage).nearGround)
+        let later = inspect(engine, pose(12,pitch:49), scene, planes:[anchor])
+        XCTAssertNotEqual(sector(later,0).stepCoverage?.body, true)
+        XCTAssertNotEqual(sector(later,0).stepCoverage?.complete,true)
+    }
+
+    func testAnalyticDepthChecksOneOriginalFootprintThroughSpeechTranslationAndSettling() throws {
+        let engine = GroundAssessment(), floor = horizontal(), anchor = patch(0,z:-4...2,surface:.floor)
+        let wall = panel(at: V3(0,1.55,-3.0), halfWidth:3, halfHeight:3.2), scene = nearest(floor,wall)
+        var nav = SpatialNavigator(doorTarget:false)
+        nav.setStepTask(destination:"厕所",task:"接近过道",revision:1)
+        @discardableResult func feed(_ frame:Int,_ pitch:Double,_ displacement:Double = 0) -> LocalCue? {
+            let p = pose(frame,pitch:pitch,position:V3(0,1.32,-displacement)); nav.pose(p)
+            nav.risk(inspect(engine,p,scene,planes:[anchor])); return nav.cue()
+        }
+        for i in 1...8 { XCTAssertNotEqual(feed(i,49)?.kind,.advance) }
+        nav.faceForward()
+        XCTAssertNotEqual(feed(9,-6)?.kind,.advance)
+        var cues: [String] = []
+        for i in 10...13 { cues.append(feed(i,49)?.text ?? "—") }
+        let cue = try XCTUnwrap(nav.cue()), id = try XCTUnwrap(cue.permitID, cues.joined(separator: " → "))
+        let t = try XCTUnwrap(nav.current).time
+        XCTAssertTrue(nav.permitsSpeech(cue, at:t)); nav.submittedStep(id,at:t)
+        XCTAssertTrue(nav.stepSpeechStarted(id,at:t)); XCTAssertTrue(nav.activeStep!.check.coverage.allSatisfy { $0.source == .lidar })
+        for (i,d) in [(14,0.055),(15,0.13),(16,0.20),(17,0.27),(18,0.27),(19,0.27),(20,0.27),(21,0.27)] {
+            XCTAssertNotEqual(feed(i,49,d)?.kind,.stop)
+        }
+        let events = nav.takeStepEvents().filter { $0.permit?.id == id }
+        XCTAssertTrue(events.contains { $0.type == "completed" }, String(describing:events.map { ($0.type,$0.reason) }))
+        XCTAssertNil(nav.activeStep)
+    }
 }

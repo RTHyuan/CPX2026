@@ -5,6 +5,8 @@ import Foundation
 struct CueDelivery {
     private(set) var last: LocalCue?
     private(set) var forwardOutstanding = false
+    /// Synchronize only with actual output callbacks and terminal permit transitions.
+    mutating func syncStep(_ permit: StepPermit?) { forwardOutstanding = permit?.spokenAt != nil }
     private var lastAt = -Double.infinity
     private var ambientAt = -Double.infinity
     private var holdUntil = -Double.infinity
@@ -15,11 +17,15 @@ struct CueDelivery {
     /// Give the direction enough airtime to be understood before reading a sign.
     func turnHasPriority(at t: Double) -> Bool { last?.isAvoidanceTurn == true && t - lastAt < 1.8 }
 
-    mutating func sampled(at t: Double, dangerPresent: Bool, frontProven: Bool) {
-        if dangerPresent { clearSince = nil; return }
+    mutating func sampled(at t: Double, dangerPresent: Bool, frontProven: Bool, observedClear: Bool = false) {
+        if dangerPresent || (!frontProven && !observedClear) { clearSince = nil; return }
         if clearSince == nil { clearSince = t }
         if frontProven || t - (clearSince ?? t) >= 1 { spokenDangers.removeAll() }
     }
+
+    // A deliberate turn away and back is a new encounter with this entrance, even
+    // when the other view was a raised camera with no floor evidence.
+    mutating func leftRestrictedEntrance() { spokenDangers.remove("restriction") }
 
     mutating func take(_ cue: LocalCue, at t: Double, cause: String = "obstacle", revoke: Bool = false) -> Bool {
         if cue.kind == .stop {
@@ -43,6 +49,7 @@ struct CueDelivery {
                 if (last?.kind == .stop && t < holdUntil) || turnHasPriority(at: t) { return false }
                 holdUntil = t + 3.2
             case .wait, .scan:
+                if [.personAtRest, .obstacleAtRest, .dropAtRest, .stepReview].contains(cue) { break }
                 // The navigator offers the end of a completed sweep exactly once per station.
                 if cue != .noConfirmedAisle {
                     let adjustment = cue.isFramingHint && (last == .lookAround || last?.isFramingHint == true)
@@ -57,10 +64,29 @@ struct CueDelivery {
             default:
                 guard t >= holdUntil else { return false }
             }
-            if cue.kind == .advance { forwardOutstanding = true }
+            if cue.kind == .advance && cue.permitID == nil { return false }
         }
         last = cue; lastAt = t
         return true
+    }
+}
+
+/// Retain facts only. Queued movement directions would be unsafe after a turn or a detour.
+struct PendingSignReading {
+    let cue: LocalCue
+    let origin: FramePose
+    let goal: String
+    let landmarkID: Int?
+
+    func words(at pose: FramePose, for currentGoal: String, in book: LandmarkBook) -> String? {
+        guard cue.kind == .route, origin.id.sameWorld(pose.id), pose.normal, goal == currentGoal,
+              (0...18).contains(pose.time - origin.time) else { return nil }
+        if let landmarkID {
+            guard let sign = book.records.first(where: { $0.id == landmarkID }), sign.kind == .sign else { return nil }
+            return sign.signReadout(at: pose, target: currentGoal)
+        }
+        guard pose.position.groundDistance(origin.position) <= 0.32, pose.sameView(as: origin, within: 12) else { return nil }
+        return cue.text
     }
 }
 

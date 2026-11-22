@@ -68,18 +68,28 @@ extension LidarDepthFrame {
 
 final class NearVision {
     private let assessment = GroundAssessment()
+    private var lastPose: FramePose?
     // Camera.run enables this semantic on supporting devices. A missing capture on such a
     // device must invalidate depth proof rather than falling through to a monocular clear.
     private let usesDepth = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
 
     func inspect(_ frame: ARFrame, pose p: FramePose, semantic: [Sighting]) -> NearField {
         let image = FloorImage(frame.capturedImage, pose: p)
-        let usable = usesDepth ? image?.exposed == true : image?.visible == true
+        // An exposure spanning a large rotation/translation blurs image-based person checks even
+        // when depth returns remain dense. Estimate smear at 0.75 m from successive capture poses.
+        let prior = lastPose; lastPose = p
+        let sharp: Bool
+        if let prior, prior.id.sameWorld(p.id), (0.025...0.58).contains(p.time - prior.time) {
+            let rotation = acos(min(1, max(-1, p.forward.dot(prior.forward))))
+            let motion = rotation + (p.position - prior.position).length / 0.75
+            sharp = motion * max(0, frame.camera.exposureDuration) / (p.time - prior.time) < 0.014
+        } else { sharp = false }
+        let usable = sharp && (usesDepth ? image?.exposed == true : image?.visible == true)
         guard usable, p.normal else {
             if usesDepth {
                 return assessment.inspectLidar(pose: p, depth: nil, planes: [], observations: [], personOK: false, exposed: false)
             }
-            return assessment.inspect(image: image, pose: p, planes: [], features: [], observations: [], personOK: false)
+            return assessment.inspect(image: nil, pose: p, planes: [], features: [], observations: [], personOK: false)
         }
         let human = VNDetectHumanRectanglesRequest()
         human.upperBodyOnly = false

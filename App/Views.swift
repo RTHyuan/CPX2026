@@ -171,9 +171,13 @@ struct RootView: View {
         }
         if !route.history.isEmpty { JourneyHistory(route: route) }
         if scanner.canGuide && !route.target.isClassroomDoor {
-            if route.stage == .survey || route.stage == .doorway {
+            if route.plannerScene == .unknown && route.stage != .arrived {
+                Button("我在房间内") { scanner.confirmInsideRoom() }.buttonStyle(SignButton()).accessibilityIdentifier("insideRoom")
+            }
+            if route.stage == .survey || route.stage == .doorway || route.plannerScene == .unknown && route.stage != .arrived {
                 Button("我已在公共区域") { scanner.publicArea() }.buttonStyle(SignButton()).accessibilityIdentifier("publicArea")
-            } else {
+            }
+            if route.stage != .survey && route.stage != .doorway && route.stage != .arrived {
                 Button("重新确认位置") { scanner.locateAgain() }.buttonStyle(SignButton()).accessibilityIdentifier("relocalize")
             }
         }
@@ -232,33 +236,45 @@ struct RootView: View {
         CameraPreview(camera: scanner.camera)
         #endif
     }
+    private var cloudDisclosure: String {
+        let connection = scanner.directCloudAvailable ? "由这台 iPhone 直接" : "经配对的 Mac "
+        return "你的目的地、选中的现场画面（包括相关历史帧）、拍摄位姿和附近线索将" + connection + "发给云端识图服务。画面可能包含旁人。"
+    }
+
     private var instructions: some View {
         NavigationStack {
             List {
                 info("开始导航", "location", "点“说出目的地”，例如“带我去教室门口”。也可以输入房号、科室或店名。首次导航请允许后置相机。")
                 info("查看路牌", "viewfinder", "转动手机环顾四周。看到牌时，让名称、楼层和对应箭头一起入镜。导航会记住标识的位置。")
-                info("沿平坦过道行走", "figure.walk", "把手机朝向身体前方，略向下倾约三十至四十五度。按提示原地转向，轻震后点“手机已朝向身体前方”。听到慢行提示后再走。遇到台阶，留在原地向两侧扫描。若只有台阶，请陪同人员协助。")
+                info("沿平坦过道行走", "figure.walk", "把手机朝向身体前方，略向下倾约三十至四十五度。按提示原地转向，轻震后点“手机已朝向身体前方”。听到“向前迈一步”只迈一步，站稳后等下一次检查。保持身体和手机朝向时无需重复点击。遇到台阶，留在原地向两侧扫描。若只有台阶，请陪同人员协助。")
                 info("现场核对", "signpost.right", "请核对通道和独立门牌后再确认。行走和避障时，继续使用惯常的出行辅助。")
-                info("相机与隐私", "lock", "位姿、近场通行图和识别默认在本次导航中处理。启用云端后，选中的画面、目的地、相关位姿和线索会经演示 Mac 发给 DeepSeek。暂停、进入后台或结束会停止采集和发送。中文语音输入使用本机识别。")
+                info("相机与隐私", "lock", "中文听写和脚前通行检查在 iPhone 上完成。启用云端后，\(cloudDisclosure)暂停、进入后台或结束导航会停止新的采集和发送。")
                 Section("云端视觉") {
                     Text(scanner.networkNote).accessibilityIdentifier("cloudStatus")
-                    TextField("演示 Mac 显示的完整配对地址",text:$scanner.proxyAddress)
-                        .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL).disabled(scanner.cloudEnabled)
-                        .accessibilityIdentifier("proxyAddress")
+                    if scanner.directCloudAvailable {
+                        Text("这台 iPhone 可通过无线局域网或蜂窝网络连接云端识图服务。")
+                    } else {
+                        TextField("演示 Mac 显示的完整配对地址",text:$scanner.proxyAddress)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL).disabled(scanner.cloudEnabled || scanner.checkingCloud)
+                            .accessibilityIdentifier("proxyAddress")
+                    }
                     Button(scanner.cloudEnabled ? "切换到仅本机" : "启用云端视觉") {
                         if scanner.cloudEnabled { scanner.configureCloud(enable:false) } else { confirmCloud=true }
                     }.accessibilityIdentifier("enableCloud")
+                    Button("用公开门照测试连接") { Task { await scanner.checkCloud() } }
+                        .disabled(scanner.checkingCloud || scanner.canGuide).accessibilityIdentifier("testCloudConnection")
+                    if !scanner.cloudTestNote.isEmpty { Text(scanner.cloudTestNote).accessibilityIdentifier("cloudTestResult") }
                 }
                 Section("楼层参考图") {
                     Text(scanner.mapNote)
                     Button("导入本地楼层图") { importMap=true }; Button("使用无图导航") { scanner.clearPrior() }
                 }
                 if !scanner.metricsText.isEmpty {
-                    Section("本次测试记录") { ShareLink("分享计时和停步记录",item:scanner.metricsText) }
+                    Section("本次测试记录") { ShareLink("分享本次一步许可和停步记录",item:scanner.metricsText) }
                 }
             }.alert("允许发送导航关键帧？",isPresented:$confirmCloud) {
                 Button("仅本机使用",role:.cancel) {}; Button("允许关键帧") { scanner.configureCloud(enable:true) }
-            } message: { Text("目的地、选中的现场画面、对应位姿和近期导航线索会经配对的 Mac 发送给 DeepSeek。画面可能包含旁人。你可以随时切回仅本机。") }
+            } message: { Text(cloudDisclosure + "你可以随时切回仅本机。") }
             .fileImporter(isPresented:$importMap,allowedContentTypes:[.json]) { result in if case .success(let url)=result { scanner.loadPrior(url) } }
             .listStyle(.insetGrouped).navigationTitle("使用说明").navigationBarTitleDisplayMode(.inline)
                 .toolbar {

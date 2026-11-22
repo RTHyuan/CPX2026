@@ -15,9 +15,13 @@ enum RouteVision {
         let scores = classified ? classification.results ?? [] : []
         func best(_ names: Set<String>) -> Float { scores.filter { names.contains($0.identifier) }.map(\.confidence).max() ?? 0 }
         var result = SceneClues()
-        let room = best(["interior_room","bedroom","classroom","living_room","dining_room","kitchen_room","bathroom_room"])
-        let shop = best(["interior_shop"]), outside = best(["outdoor"])
-        if max(room, shop, outside) >= 0.58 { result.setting = outside > max(room, shop) ? .outside : (shop > room ? .shop : .room) }
+        // Generic "interior_room" also labels hallways. Only specific classes establish a room.
+        let sceneScores: [(VisualSetting, Float)] = [
+            (.room, best(["bedroom", "classroom", "auditorium", "living_room", "dining_room", "kitchen_room", "bathroom_room"])),
+            (.shop, best(["interior_shop"])), (.outside, best(["outdoor"]))
+        ]
+        let ranked = sceneScores.sorted { $0.1 > $1.1 }
+        if ranked[0].1 >= 0.58, ranked[0].1 - ranked[1].1 >= 0.10 { result.setting = ranked[0].0 }
         if best(["door"]) >= 0.58 { result.door = "画面中" }
         var regions = rectangles.results ?? []
         if regions.isEmpty {

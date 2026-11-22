@@ -27,7 +27,7 @@ enum Facility: String, CaseIterable {
         case .lift: return ["电梯", "電梯", "LIFT", "ELEVATOR"]
         case .exit: return ["出口", "安全出口", "EXIT"]
         case .stairs: return ["楼梯", "樓梯", "STAIRS", "STAIRCASE"]
-        case .restroom: return ["洗手间", "卫生间", "洗手間", "衛生間", "RESTROOM", "TOILET", "WC"]
+        case .restroom: return ["洗手间", "卫生间", "洗手間", "衛生間", "厕所", "廁所", "RESTROOM", "TOILET", "WC"]
         }
     }
 }

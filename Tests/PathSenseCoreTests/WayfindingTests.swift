@@ -9,6 +9,22 @@ final class WayfindingTests: XCTestCase {
         WayfindingParser.read(frame(lines.map { SignLine($0) }, target), for: target)
     }
     private let clinic = Destination(wayfinding: "屈光检查室")!
+    func testRepeatedPrintedRoomUsesItsCaptionAndPreservesTheVotingBoundary() throws {
+        // Fast Vision rectangles from the two printed rows in rtr1 at 70.2 s.
+        let box = CGRect(x: 0.557, y: 0.829, width: 0.296, height: 0.055)
+        let caption = CGRect(x: 0.542, y: 0.708, width: 0.338, height: 0.026)
+        let row = SignLine("BSG33", confidence: 0.5, bounds: box)
+        let second = SignLine("ROOM- BSG33", confidence: 0.5, bounds: caption)
+        XCTAssertEqual(try XCTUnwrap(WayfindingParser.printedRoomPair(in: [row, second])).number.text, row.text)
+        for invalid in [[row], [row, SignLine("ROOM- BSG35", bounds: caption)],
+                        [row, SignLine(second.text, bounds: box)], [row, second, SignLine("Staff Only")]] {
+            XCTAssertNil(WayfindingParser.printedRoomPair(in: invalid))
+        }
+        let boundary = SignLine("BSG33", confidence: Float(0.78))
+        XCTAssertEqual(boundary.landmarkConfidence, 0.78)
+        XCTAssertLessThan(SignLine("BSG33", confidence: Float(0.78).nextDown).landmarkConfidence, 0.78)
+    }
+
     func testFreeInputKeepsNamesAndRoomIdentity() {
         XCTAssertEqual(Destination(wayfinding:"带我去纸舟咖啡")?.text,"纸舟咖啡")
         XCTAssertEqual(Destination(wayfinding:"FIND Oak & Iris")?.text,"Oak & Iris")
@@ -29,6 +45,20 @@ final class WayfindingTests: XCTestCase {
         XCTAssertEqual(sign(["您在此 一层","门诊目录","地下二层 屈光检查室"],clinic).currentLevel,"1F")
         XCTAssertEqual(sign(["十六楼"],clinic).currentLevel,"16F")
         XCTAssertEqual(sign(["LEVEL B2"],clinic).currentLevel,"B2")
+    }
+    func testRoomBookingPlaqueWithUnrelatedCopyOnlyRecordsAnUnambiguousInscription() {
+        let goal = Destination.facility(.restroom)
+        let wording = ["BSG 33", "ROOM - BSG33", "Please Scan the Code to Check Room Availability"]
+        let facts = sign(wording, goal)
+        XCTAssertEqual(facts.nearbyRoom, "BSG33")
+        XCTAssertNil(facts.target)
+        var journey = WayfindingJourney(target: goal)
+        journey.observe(facts)
+        XCTAssertEqual(journey.plannerScene, .unknown)
+        XCTAssertEqual(journey.target, goal)
+        XCTAssertNil(journey.action)
+        XCTAssertNil(sign(["BSG 34", "ROOM - BSG33", "Check room availability"], goal).nearbyRoom)
+        XCTAssertNil(sign(wording + ["ROOM - BSG32"], goal).nearbyRoom)
     }
     func testSparseObservationsCanStartInTheMiddleOnTheSameFloor() {
         var journey = WayfindingJourney(target:clinic)

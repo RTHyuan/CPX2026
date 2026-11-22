@@ -28,7 +28,7 @@ struct ImageBox: Codable, Equatable {
         let (u, v) = other.center
         return (left...right).contains(u) && (top...bottom).contains(v)
     }
-    fileprivate func overlap(with other: Self) -> Double {
+    func overlap(with other: Self) -> Double {
         let width = max(0, min(right, other.right) - max(left, other.left))
         let height = max(0, min(bottom, other.bottom) - max(top, other.top))
         let union = (right-left)*(bottom-top) + (other.right-other.left)*(other.bottom-other.top) - width*height
@@ -156,6 +156,11 @@ struct Landmark: Equatable {
         guard last.position.groundDistance(pose.position) <= 0.38 else { return nil }
         return turnAngle(ray.heading-pose.heading)
     }
+    /// A retained survey ray can point the camera back to its subject. Issuing another
+    /// step also requires a recent observation of that particular landmark.
+    func recentlyObservedForStep(at time: Double) -> Bool {
+        (0...(kind == .aisle_entrance ? 3.0 : 8.0)).contains(time - last.time)
+    }
     static func intersection(_ a: V3, _ u: V3, _ b: V3, _ v: V3) -> V3? {
         let w = a-b, c = u.dot(v), det = 1-c*c
         guard a.groundDistance(b) >= 0.32, c > 0, det > 0.008 else { return nil }
@@ -176,9 +181,13 @@ struct LandmarkBook {
     }
     private var signFrames: [FrameID: SignFrame] = [:]
     private var latestTime = -Double.infinity
-    mutating func expire(at t: Double) {
+    mutating func expire(at t: Double, preserving selected: Set<Int> = []) {
         latestTime = max(latestTime, t)
-        records.removeAll { t-$0.last.time > ($0.kind.mobile ? 0.7 : ($0.kind == .aisle_entrance ? 3 : Landmark.signLifetime)) }
+        records.removeAll { record in
+            if record.kind.waypoint && selected.contains(record.id) { return false }
+            let lifetime = record.kind.mobile ? 0.7 : (record.kind == .aisle_entrance ? 3 : Landmark.signLifetime)
+            return t - record.last.time > lifetime
+        }
         for i in records.indices where records[i].kind == .sign { records[i].expireReadings(at: t) }
     }
 
