@@ -9,7 +9,7 @@
 - Xcode 工程版本：`MARKETING_VERSION = 1.0`，`CURRENT_PROJECT_VERSION = 19`；App 最低 iOS 27.0，Swift 设置为 5.0。
 - Swift Package：`PathSenseCore`，用于独立运行核心逻辑测试；Package 平台声明与 App 最低系统版本不是同一个配置。
 - 当前 HEAD 包含模拟器视频回放与本机中转的后续改动；此前版本 19 的真机安装、地图与测试记录不自动证明这些后续改动均已验证。
-- 项目所有者已于 2026-11-22 确认：上传 `.gitignore` 忽略项之外的全部项目内容，包含原始现场素材、扫描楼层图、实测数据和演示媒体；保留现有提交历史。指定目标为 `https://github.com/RTHyuan/-.git`，发布分支为 `main`。发布结果以远程 `main` 的实际提交为准。
+- 项目所有者已于 2026-11-22 确认：上传 `.gitignore` 忽略项之外的全部项目内容，包含原始现场素材、扫描楼层图、实测数据和演示媒体；保留现有提交历史。指定目标为 `https://github.com/RTHyuan/CPX2026.git`，发布分支为 `main`。发布结果以远程 `main` 的实际提交为准。
 
 ## 目录如何阅读
 
@@ -173,7 +173,7 @@ xcodebuild -project PathSense.xcodeproj -scheme PathSense \
 
 ## 已确认的 GitHub 发布范围
 
-项目所有者于 2026-11-22 在阅读目录审计后，选择上传 `.gitignore` 忽略项之外的全部内容，即此前 A／B／C 范围以及原始现场照片、视频与其他非忽略文件。目标远程为 `https://github.com/RTHyuan/-.git`，使用 `main`，按用户给出的 Git 推送流程保留现有提交历史。发布范围按此记录执行；具体版本以远程 `main` 提交为准。
+项目所有者于 2026-11-22 在阅读目录审计后，选择上传 `.gitignore` 忽略项之外的全部内容，即此前 A／B／C 范围以及原始现场照片、视频与其他非忽略文件。目标远程为 `https://github.com/RTHyuan/CPX2026.git`，使用 `main`，按用户给出的 Git 推送流程保留现有提交历史。发布范围按此记录执行；具体版本以远程 `main` 提交为准。
 
 已被 `.gitignore` 忽略的构建缓存、DerivedData、`.env*`、`Proxy/local_settings.py`、证书／描述文件、部分 ZIP 和私有提交资料等不纳入。`output/`、`照片/` 等目录并没有整体被忽略，其中未被忽略的文件也属于用户本次选择。Git 忽略规则不会自动抹掉已经提交的历史内容；保留现有历史意味着相关历史对象也会随 Git 推送保留。`.git/` 是本地仓库数据库，不作为普通源码目录另行添加。
 
