@@ -18,6 +18,8 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             page {
+                Text("室内语音导航").font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("productDescription")
                 destinationEntry
                 group("常用设施") { facilityRows }
                 if !scanner.history.isEmpty { group("最近找过") { recentRows } }
@@ -25,13 +27,13 @@ struct RootView: View {
                     .tint(Palette.accent).padding(.horizontal, 19).padding(.vertical, 13)
                     .surface(Palette.paper, radius: Radius.control).accessibilityIdentifier("voice")
             }
-            .navigationTitle("室内寻路")
+            .navigationTitle("PathSense")
             .toolbar { helpItem }
             .navigationDestination(isPresented: navigating) {
                 page(spacing: 14) {
                     if let route = scanner.journey { navigationContent(route) }
                 }
-                .navigationTitle("室内导航").navigationBarTitleDisplayMode(.inline)
+                .navigationTitle("PathSense").navigationBarTitleDisplayMode(.inline)
                 .navigationBarBackButtonHidden()
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -115,7 +117,7 @@ struct RootView: View {
                 Button(action: begin) { Label("开始导航", systemImage: "location.fill") }
                     .buttonStyle(SignButton()).accessibilityIdentifier("startLive")
             }
-            Text("站定后慢慢转动手机，听取沿途的标识提示。")
+            Text("把手机对准前方，听门的位置和路牌指向。")
                 .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 .padding(.leading, 4)
         }
@@ -254,7 +256,7 @@ struct RootView: View {
                     if scanner.directCloudAvailable {
                         Text("这台 iPhone 可通过无线局域网或蜂窝网络连接云端识图服务。")
                     } else {
-                        TextField("演示 Mac 显示的完整配对地址",text:$scanner.proxyAddress)
+                        TextField("配对 Mac 显示的完整地址",text:$scanner.proxyAddress)
                             .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL).disabled(scanner.cloudEnabled || scanner.checkingCloud)
                             .accessibilityIdentifier("proxyAddress")
                     }

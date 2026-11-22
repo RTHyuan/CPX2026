@@ -291,7 +291,7 @@ import UIKit
     }
 
     func finish() {
-        stop(); arrived = true; scene = ""; instruction = text("已到门口，演示结束。", "You are at the doorway. Demo complete."); status = text("演示完成", "Demo complete")
+        stop(); arrived = true; scene = ""; instruction = text("已到门口，本次导航结束。", "You are at the doorway. Navigation ended."); status = text("导航已结束", "Navigation ended")
         feedback.deliver(instruction, sound: sound, haptic: .arrival, interrupt: true)
     }
 

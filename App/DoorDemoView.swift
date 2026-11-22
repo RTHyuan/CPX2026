@@ -22,6 +22,8 @@ struct DoorDemoView: View {
     var body: some View {
         NavigationStack {
             page {
+                Text(text("室内语音导航", "Indoor voice navigation"))
+                    .font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("productDescription")
                 destinationEntry
                 group(text("常用设施", "Common destinations")) { facilityRows }
                 if !demo.history.isEmpty { group(text("最近找过", "Recent destinations")) { recentRows } }
@@ -34,11 +36,11 @@ struct DoorDemoView: View {
                     Text("English").tag(GuidanceLanguage.english)
                 }.pickerStyle(.segmented).disabled(demo.listening).accessibilityIdentifier("demoLanguage")
             }
-            .navigationTitle(text("室内寻路", "Indoor Navigation"))
+            .navigationTitle("PathSense")
             .toolbar { helpItem }
             .navigationDestination(isPresented: navigating) {
                 page(spacing: 14) { guidance }
-                    .navigationTitle(text("室内导航", "Indoor Navigation")).navigationBarTitleDisplayMode(.inline)
+                    .navigationTitle("PathSense").navigationBarTitleDisplayMode(.inline)
                     .navigationBarBackButtonHidden()
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
@@ -130,8 +132,8 @@ struct DoorDemoView: View {
                 Button(action: begin) { Label(text("开始导航", "Start navigation"), systemImage: "location.fill") }
                     .buttonStyle(SignButton()).accessibilityIdentifier("startDoorDemo")
             }
-            Text(text("手机朝身体前方。识图描述现场，听一句，做一步，到门口结束。",
-                      "Point the phone straight ahead. Visual guidance describes the view and guides one step at a time to a doorway."))
+            Text(text("将手机朝向前方。听取当前环境和下一项动作，每次按一条提示行动。",
+                      "Point your phone ahead to hear about your surroundings and what to do next. Follow one instruction at a time."))
                 .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true).padding(.leading, 4)
             Text(demo.status).font(.callout).foregroundStyle(.secondary).accessibilityIdentifier("demoStatus")
             if demo.isVideoReplay {
@@ -205,7 +207,7 @@ struct DoorDemoView: View {
                         .buttonStyle(SignButton(tone: .primary)).accessibilityIdentifier("demoFacing")
                 }
                 if !demo.paused { camera }
-                Button(text("我已到门口，结束", "I’m at the doorway. Finish")) { demo.finish() }
+                Button(text("已到门口，结束导航", "At the doorway. End navigation")) { demo.finish() }
                     .buttonStyle(SignButton()).accessibilityIdentifier("finishDoorDemo")
                 Button(text("结束导航", "End navigation")) { demo.returnHome() }.buttonStyle(SignButton())
             } else {
@@ -302,7 +304,7 @@ struct DoorDemoView: View {
         NavigationStack {
             List {
                 Section(text("开始导航", "Start navigation")) {
-                    Text(text("说出或输入目的地，也可选择常用设施。本演示带你到可识别的门口。", "Say or enter a destination, or select a common destination. This demo guides you to a recognizable doorway."))
+                    Text(text("说出或输入目的地，也可选择常用设施。PathSense 会根据沿途的观察给出语音提示。当前版本可引导你接近能辨认的门口。", "Say or enter a destination, or choose one from the list. PathSense gives spoken guidance based on what the camera sees along the way. This version can guide you toward a recognizable doorway."))
                 }
                 Section(text("听一句，做一步", "One instruction at a time")) {
                     Text(text("手机朝身体前方。识图引导会简短描述现场并给出下一步。只有听到前进一步才迈一小步，站稳后等下一次提示。", "Point the phone straight ahead. Visual guidance briefly describes the view and gives the next instruction. Take one small step only when prompted, then stand still and wait."))

@@ -1,4 +1,5 @@
+"CFBundleDisplayName" = "PathSense";
 "NSCameraUsageDescription" = "使用后置相机寻找门和过道，检查眼前障碍。";
 "NSMicrophoneUsageDescription" = "点击麦克风后收听你想去的地方。";
 "NSSpeechRecognitionUsageDescription" = "在这台 iPhone 上将你说出的目的地转换成文字。";
-"NSLocalNetworkUsageDescription" = "经你同意，将本次导航关键帧交给同一网络下的演示 Mac。";
+"NSLocalNetworkUsageDescription" = "经你同意，将本次导航关键帧交给同一网络下的配对 Mac。";

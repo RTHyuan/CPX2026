@@ -8,10 +8,10 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>经你同意，将本次导航关键帧交给同一网络下的演示 Mac。</string>
+	<string>经你同意，将本次导航关键帧交给同一网络下的配对 Mac。</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>点击麦克风后收听你想去的地方。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>将你说出的中文目的地转换成文字。</string>
+	<string>在这台 iPhone 上将你说出的目的地转换成文字。</string>
 </dict>
 </plist>

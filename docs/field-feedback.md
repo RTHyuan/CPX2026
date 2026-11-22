@@ -25,7 +25,7 @@
 
 ## 实拍材料和复现方法
 
-[逐片报告](../Submission/private/field-videos/runs/20261121T200140Z-c4e596c0/REPORT.md)列出 `info.txt` 点名的两段录像。rtr1 从阶梯教室走到 BSG33 门外，归档 81 帧。rtr2 从 BSG33 经过两处不同的方向吊牌到 BSG35，归档 66 帧。两片共核对 13 个标注时刻。rtr1 的木门纸表有运动模糊，rtr2 的目录右缘有裁切。两段录像缺少与 App 同步的语音和 AR 事件。既有 `视频-zhx.mp4` 在[来源清单](../Submission/private/field-videos/legacy.json)中单列。
+逐片报告（本地复核 `../Submission/private/field-videos/runs/20261121T200140Z-c4e596c0/REPORT.md`）列出 `info.txt` 点名的两段录像。rtr1 从阶梯教室走到 BSG33 门外，归档 81 帧。rtr2 从 BSG33 经过两处不同的方向吊牌到 BSG35，归档 66 帧。两片共核对 13 个标注时刻。rtr1 的木门纸表有运动模糊，rtr2 的目录右缘有裁切。两段录像缺少与 App 同步的语音和 AR 事件。既有 `视频-zhx.mp4` 在来源清单（本地复核 `../Submission/private/field-videos/legacy.json`）中单列。
 
 在项目根目录运行以下命令。第一条按原片呈现时间重建八张集成帧并校验 SHA-256。最后一条在指定模拟器上复现四项现场图片回放与三项空间回放，实际的测试结果、语音事件及计时随结果包留在本机。
 
@@ -62,7 +62,7 @@ Scripts/replay-field.sh SIMULATOR_UDID
 
 视觉回放直接读取实拍 JPEG。文字用系统 Vision 识别。门与人的框、通道扇区、位姿和落差采用受控测试输入。确认事件到语音开始的时间取 `AVSpeechSynthesizer` 回调。陪同实走另计入镜到实际出声、身体停步、走完全程用时及逐项漏报和误报。
 
-公开图文请求的 [App 侧结果包](../.build-local/field-feedback/agent-d/public-20261122-043953-32716.xcresult) 和 [上游回包见证](../.build-local/field-feedback/agent-d/public-upstream-20261122-043952.json) 可在这台 Mac 查看。两张现场录像帧此前申请外发，自动审批因包含私人现场影像且缺少该用途的明确授权而拒绝。这些帧用于本机 OCR、近场判断和回环测试。
+公开图文请求的 App 侧结果包（本地复核 `../.build-local/field-feedback/agent-d/public-20261122-043953-32716.xcresult`） 和 上游回包见证（本地复核 `../.build-local/field-feedback/agent-d/public-upstream-20261122-043952.json`） 可在这台 Mac 查看。两张现场录像帧此前申请外发，自动审批因包含私人现场影像且缺少该用途的明确授权而拒绝。这些帧用于本机 OCR、近场判断和回环测试。
 
 ## 本轮绕行测量
 
@@ -73,7 +73,7 @@ Scripts/replay-field.sh SIMULATOR_UDID
 | 绕行前后门标识 | 1 → 1，同一坐标系 |
 | 受控人员框触发到系统开始播“先停一下” | 绕行回放 29.725 毫秒，抬手机读牌回放 12.241 毫秒 |
 
-[逐项指标和测试附件索引](../.build-local/field-feedback/agent-d/field-20261122-045033-34904-metrics.json) · [XCTest 结果包](../.build-local/field-feedback/agent-d/field-20261122-045033-34904.xcresult)
+逐项指标和测试附件索引（本地复核 `../.build-local/field-feedback/agent-d/field-20261122-045033-34904-metrics.json`） · XCTest 结果包（本地复核 `../.build-local/field-feedback/agent-d/field-20261122-045033-34904.xcresult`）
 
 真实走廊和教室的已知问题来自参与者反馈：手抖时重复停步，阶梯教室提示协助后卡在原地，门牌与图标在抬机时被地面复核打断。实拍回放还复现了一次“房号已经读完但重听变成环顾”。本版修复后，上表两次受控人员进入均触发停步，轻抖读牌阶段有 0 次紧急震动。真实有人入镜或移椅到传感器首次检出的时间，以及细椅腿、低凳和玻璃门的漏报数，待陪同实走记录。
 
@@ -97,7 +97,7 @@ Scripts/replay-field.sh SIMULATOR_UDID
 
 在照明和追踪可用的情况下，持续约 1.6 秒找过道仍缺少地面证据，手机按当前俯仰给出持机动作。平举时提示朝前下倾，角度已合适则提示向两侧扫描。看牌时优先读牌。观测到新危险立即停步。前方连续取得通行证据并完成对准后，应用说明「已看清前方这段过道」，请用户确认手机朝向身体前方，然后给出慢行提示。
 
-Mac 核心回归已通过 113/113，含实拍录像帧、门在地面出画时仍能被报告、转向占用语音和新人员抢占。代理回环回归通过 11/11。[核心记录](../.build-local/field-feedback/passage-20261122/core-door-final.log) · [代理记录](../.build-local/field-feedback/passage-20261122/proxy-loopback.log) · [第一轮 Air 回放](../.build-local/field-feedback/passage-20261122/navigation.log)
+Mac 核心回归已通过 113/113，含实拍录像帧、门在地面出画时仍能被报告、转向占用语音和新人员抢占。代理回环回归通过 11/11。核心记录（本地复核 `../.build-local/field-feedback/passage-20261122/core-door-final.log`） · 代理记录（本地复核 `../.build-local/field-feedback/passage-20261122/proxy-loopback.log`） · 第一轮 Air 回放（本地复核 `../.build-local/field-feedback/passage-20261122/navigation.log`）
 
 Mac 更换 Wi-Fi 后需使用本次服务生成的整行地址。手机与 Mac 加入同一局域网，打开「使用说明 → 云端视觉」，填入地址并允许关键帧，开始或继续导航。界面显示「云端已连接 · 停步由本机判断」表示手机已收到有效的模型回复。本机端口验证与手机端有效回复分别记录。
 

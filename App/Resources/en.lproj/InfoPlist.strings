@@ -1,4 +1,5 @@
+"CFBundleDisplayName" = "PathSense";
 "NSCameraUsageDescription" = "Use the rear camera to find doors and passages and check obstacles ahead.";
 "NSMicrophoneUsageDescription" = "Listen to your destination when you tap the microphone.";
 "NSSpeechRecognitionUsageDescription" = "Turn your spoken destination into text on this iPhone.";
-"NSLocalNetworkUsageDescription" = "With your permission, send selected navigation views to the paired demo Mac on this network.";
+"NSLocalNetworkUsageDescription" = "With your permission, send selected navigation views to the paired Mac on this network.";

@@ -1,5 +1,7 @@
 # PathSense · Devpost 文案与 90 秒桌面演示
 
+> 历史资料 · 2026 年 11 月。本文保留当时的演示内容与验证记录。当前功能和技术边界见[项目介绍](../../../../README.md)。
+
 ## 项目名和简述
 
 **PathSense · 室内寻路**  
@@ -43,12 +45,12 @@ Codex assisted with implementation, tests and documentation. This build uses Xco
 | 55–72 秒 | 扫走廊路牌、独立门牌，确认到达。 | “路口的箭头指向左边。独立门牌写着 402，我核对后确认到达。” |
 | 72–90 秒 | 请评委输入其他名称，把后置镜头转向另一块标牌。 | “医院科室和商场店招走同一套识别。导览牌上出现两个相近名称时，使用者可以选择。欢迎用另一块路牌试试。” |
 
-展台保留[构建 8 的连续导航界面与回放](../docs/index.html)。
+展台保留[构建 8 的连续导航界面与回放](../../../index.html)。
 
 ## 提交顺序 · 北京时间
 
 1. **现场试用。** iPhone Air（iOS 27.2.1）已安装构建 8。首次试用时请解锁，并按系统提示联网验证开发者。站定后依次扫描房号、区间和相似门牌。开启 VoiceOver，记录实际听感、触觉和时延。[实地验证记录](实地验证.md)
-2. **展桌海报。** A3 PDF 可直接打印，PNG 可供投屏。核心画面来自构建 8 的持续扫描模拟器实录。赛事规则另要求 AMD 原图和同一作品的 Gallery 截图。当前版缺少这两项，正式交件前向主办方核对是否接受实录海报，保留答复。[A3 PDF](../output/pdf/PathSense-poster.pdf) · [PNG](../output/pdf/PathSense-poster.png) · [正式规则](https://cpx2026.devpost.com/rules)
-3. **公共访问入口。** 构建 8 的源码、寻路截图、连续回放实录、字幕、打印标牌和截图版海报已打入本地交付包。取得团队授权的远程仓库后发布这版源码，保存真实仓库及演示地址。GitHub Pages 可以从 `/docs` 发布。[公开源码包](../output/PathSense-public-source.zip) · [GitHub Pages 说明](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+2. **展桌海报。** A3 PDF 可直接打印，PNG 可供投屏。核心画面来自构建 8 的持续扫描模拟器实录。赛事规则另要求 AMD 原图和同一作品的 Gallery 截图。当前版缺少这两项，正式交件前向主办方核对是否接受实录海报，保留答复。[A3 PDF](../../../../output/pdf/PathSense-poster.pdf) · [PNG](../../../../output/pdf/PathSense-poster.png) · [正式规则](https://cpx2026.devpost.com/rules)
+3. **公共访问入口。** 构建 8 的源码、寻路截图、连续回放实录、字幕、打印标牌和截图版海报已打入本地交付包。取得团队授权的远程仓库后发布这版源码，保存真实仓库及演示地址。GitHub Pages 可以从 `/docs` 发布。公开源码包（本地文件 `output/PathSense-public-source.zip`） · [GitHub Pages 说明](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 4. **填写 Devpost。** 建一个方向一项目，列入四名正式成员，填写项目简介、实际贡献和工具披露。粘贴演示与源码地址。按照主办方对海报的答复处理图片、PDF 及证明字段。
 5. **验收并提交。** 用无痕窗口播放演示、切换字幕，打开源码、海报和主办方接受的材料。内部目标为北京时间 **2026 年 11 月 22 日 12:00**，官方截止为同日 **13:00**。提交后保存平台回执与时间。[活动概览](https://cpx2026.devpost.com/) · [正式规则](https://cpx2026.devpost.com/rules)

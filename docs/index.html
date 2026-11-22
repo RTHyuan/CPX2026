@@ -1,18 +1,136 @@
 <!doctype html>
-<html lang="zh-Hans"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark">
-<title>PathSense · 室内寻路</title><meta name="description" content="用 iPhone 的持续后置镜头，沿着门牌、导览和楼层标识找到房号、科室或店铺。">
-<style>
-:root{color-scheme:light dark;--paper:#f5f5f7;--panel:white;--ink:#1d1d1f;--second:#54545a;--accent:#005abb;--rule:#d2d2d7;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC",sans-serif;line-height:1.6;color:var(--ink);background:var(--paper)}
-@media(prefers-color-scheme:dark){:root{--paper:#000;--panel:#1c1c1e;--ink:#f5f5f7;--second:#b9b9bf;--accent:#75baff;--rule:#3a3a3c}}
-*{box-sizing:border-box}body,figure,h1,h2,p{margin:0}header,.wrap{max-width:65rem;margin:auto;padding:0 1.3rem}nav{min-height:4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule)}.word{font-size:1.24rem;font-weight:700;letter-spacing:-.035em}a{color:var(--accent);text-underline-offset:.19em}nav a{color:var(--ink);text-decoration:none}a:focus-visible,video:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.hero{display:grid;grid-template-columns:1.12fr .72fr;gap:4vw;align-items:center;padding:2.6rem 0}.eyebrow,figcaption,.note{color:var(--second)}h1{font-size:clamp(2.35rem,6.4vw,4.7rem);line-height:1.1;letter-spacing:-.065em;margin:.55rem 0 1.25rem}h2{font-size:clamp(1.6rem,3vw,2.25rem);letter-spacing:-.035em}.lead{font-size:clamp(1.05rem,2.25vw,1.4rem);max-width:29em}.note{margin-top:.75rem;font-size:.96rem}.links{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;margin-top:1.4rem}.links a{padding:.5rem 0}.phone{text-align:center}.phone video{display:block;margin:auto;width:auto;height:min(60vh,30rem);max-width:100%;border-radius:26px;background:#111}.phone figcaption{margin:.6rem auto 0;font-size:.86rem}section{padding:2.1rem 0;border-top:1px solid var(--rule)}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1.15rem 0}.grid figure{background:var(--panel);border-radius:28px;padding:1rem}.grid img{width:100%;display:block;border-radius:16px}.grid figcaption{padding-top:.8rem}.grid strong{display:block;color:var(--ink);font-size:1.04rem}footer{padding:1rem 0 2rem;color:var(--second);font-size:.93rem}.skip{position:absolute;top:-8rem;z-index:2}.skip:focus{top:.7rem;background:var(--panel);padding:.4rem}@media(max-width:48rem){.hero{grid-template-columns:1fr;gap:1.6rem}.grid{grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))}.phone video{height:min(58vh,32rem)}}
-</style></head><body><a class="skip" href="#main">跳到演示</a>
-<header><nav aria-label="主导航"><span class="word" lang="en">PathSense</span><a href="#route">寻路过程</a></nav></header>
-<main id="main" class="wrap"><div class="hero"><div><p class="eyebrow" lang="en">CrossPointX 2026 · Apple Human-Centered Care</p><h1>室内寻路</h1><p class="lead">输入想去的房号、科室或店名。站定后转动 iPhone，手机会读出沿途的标识，提示下一步该找什么。</p><p class="note">这段模拟器录屏使用连续测试帧。输入 402 后，镜头依次扫过门、楼层目录、电梯和独立门牌。标牌文字和箭头由 App 实时识读。</p><div class="links"><a href="media/pathsense-demo.mp4">打开录屏</a><a href="media/pathsense-poster.pdf">查看 A3 海报</a></div></div>
-<figure class="phone"><video controls playsinline preload="metadata" poster="media/01-home.jpg" aria-label="持续扫描，从房间找到 402"><source src="media/pathsense-demo.mp4" type="video/mp4"><track kind="captions" srclang="zh-Hans" label="简体中文" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjA2LjAyMArovpPlhaUgNDAy77yM5byA5aeL5oyB57ut5omr5o+P44CCCgowMDowMDowNi4wMjAgLS0+IDAwOjAwOjA3Ljc3MArlj5HnjrDnlpHkvLzpl6jvvIzor7fmoLjlr7npl6jlj6PkuI7pgJrpgZPjgIIKCjAwOjAwOjA3Ljc3MCAtLT4gMDA6MDA6MTIuNDgwCumAmui/h+mXqOWQjueOr+mhvu+8jOWvu+aJvuWImue7j+i/h+eahOmXqOeJjOOAggoKMDA6MDA6MTIuNDgwIC0tPiAwMDowMDoyMS44MzAK6Zeo54mM5pivIDIwOOOAguWvu+aJvualvOWxguebruW9leOAggoKMDA6MDA6MjEuODMwIC0tPiAwMDowMDozMC44MzAK55uu5b2V5bCG55uu5qCH5YiX5Zyo5Zub5qW844CC5a+75om+55S15qKv5oyH56S644CCCgowMDowMDozMC44MzAgLS0+IDAwOjAwOjM4LjUyMArnlLXmoq/moIfor4bmnJ3lj7PjgILmoLjlr7nlkI7liY3lvoDlm5vmpbzjgIIKCjAwOjAwOjM4LjUyMCAtLT4gMDA6MDA6NDYuODcwCualvOWxgueJjOaYvuekuiA0Ru+8jOe7p+e7reayv+acrOWxguaMh+ekuuWvu+aJviA0MDLjgIIKCjAwOjAwOjQ2Ljg3MCAtLT4gMDA6MDA6NTUuNDMwCuacrOWxgueahOaMh+ekuueJjOacneW3pu+8jOe7p+e7reWvu+aJviA0MDLjgIIKCjAwOjAwOjU1LjQzMCAtLT4gMDA6MDA6NTcuMjgwCumVnOWktOWvueWHhiA0MDLvvIzmoLjlr7nni6znq4vpl6jniYzjgIIKCjAwOjAwOjU3LjI4MCAtLT4gMDA6MDA6NTkuMjU1CuS9v+eUqOiAheehruiupOWIsOi+vu+8jOaRhOWDj+WktOWBnOatouOAggo=" default><track kind="captions" srclang="en" label="English" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjA2LjAyMApFbnRlciByb29tIDQwMiBhbmQgc3RhcnQgY29udGludW91cyBzY2FubmluZy4KCjAwOjAwOjA2LjAyMCAtLT4gMDA6MDA6MDcuNzcwCkNoZWNrIHRoZSBwb3NzaWJsZSBkb29yd2F5IGFuZCB0aGUgcGFzc2FnZS4KCjAwOjAwOjA3Ljc3MCAtLT4gMDA6MDA6MTIuNDgwCkFmdGVyIHBhc3NpbmcgdGhyb3VnaCB0aGUgZG9vciwgbG9vayBmb3IgdGhlIHJvb20gcGxhdGUuCgowMDowMDoxMi40ODAgLS0+IDAwOjAwOjIxLjgzMApUaGUgc3RhcnRpbmcgcm9vbSBwbGF0ZSByZWFkcyAyMDguIExvb2sgZm9yIGEgZGlyZWN0b3J5LgoKMDA6MDA6MjEuODMwIC0tPiAwMDowMDozMC44MzAKVGhlIGRpcmVjdG9yeSBsaXN0cyB0aGUgZGVzdGluYXRpb24gb24gNEYuIExvb2sgZm9yIGEgbGlmdCBzaWduLgoKMDA6MDA6MzAuODMwIC0tPiAwMDowMDozOC41MjAKVGhlIGxpZnQgc2lnbiBwb2ludHMgcmlnaHQuIENoZWNrIHRoZSBsaWZ0IGFuZCB0cmF2ZWwgdG8gNEYuCgowMDowMDozOC41MjAgLS0+IDAwOjAwOjQ2Ljg3MApUaGUgbGFuZGluZyBzaWduIHJlYWRzIDRGLiBGb2xsb3cgdGhlIGNvcnJpZG9yIHNpZ25zIHRvIDQwMi4KCjAwOjAwOjQ2Ljg3MCAtLT4gMDA6MDA6NTUuNDMwClRoZSBjb3JyaWRvciBzaWduIHBvaW50cyBsZWZ0IHRvd2FyZCByb29tIDQwMi4KCjAwOjAwOjU1LjQzMCAtLT4gMDA6MDA6NTcuMjgwClNjYW4gYW5kIHZlcmlmeSB0aGUgc3RhbmRhbG9uZSA0MDIgcGxhdGUuCgowMDowMDo1Ny4yODAgLS0+IDAwOjAwOjU5LjI1NQpUaGUgdHJhdmVsZXIgY29uZmlybXMgYXJyaXZhbCBhbmQgdGhlIGNhbWVyYSBzdG9wcy4K"></video><figcaption>iPhone Air 模拟器 · 1.0（8）· 连续镜头回放<br><a href="media/01-home.jpg">浅色首页</a> · <a href="media/navigation-dark.jpg">深色导航</a></figcaption></figure></div>
-<section id="route"><h2>从房间找到 402</h2><div class="grid">
-<figure><a href="media/route-01-door.jpg"><img src="media/route-01-door.jpg" loading="lazy" alt="导航页提示镜头中央有疑似门，请核对通道。"></a><figcaption><strong>先找到门</strong>通过后环顾四周，读到并记住门牌 208。</figcaption></figure>
-<figure><a href="media/route-02-directory.jpg"><img src="media/route-02-directory.jpg" loading="lazy" alt="导航页读到目录中 401 至 420 在四楼。"></a><figcaption><strong>目录指向四楼</strong>找换层点，到站后核对楼层牌，再扫走廊的方向牌。</figcaption></figure>
-<figure><a href="media/route-03-arrived.jpg"><img src="media/route-03-arrived.jpg" loading="lazy" alt="使用者核对独立门牌并确认到达 402 后的完成页。"></a><figcaption><strong>核对独立门牌</strong>使用者确认目的地后，相机停止采集。</figcaption></figure></div></section>
-<section><h2>现场试用</h2><p>医院入口和商场使用同一个入口。输入现场科室或店名，扫目录中对应的一行。对同名条目，可按分区或楼层选择。路线线索不足时可以询问服务台。行走时请继续使用惯常的出行辅助。</p><div class="links"><a href="media/field-signs.pdf">教学楼、医院、商场展桌标牌（PDF）</a><a href="media/captions-zh.vtt">中文字幕</a><a href="media/captions-en.vtt" lang="en">English captions</a></div></section>
-</main><footer class="wrap">PathSense · SwiftUI / Vision / Core ML</footer></body></html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>PathSense｜面向盲人和低视力人士的室内语音导航系统</title>
+  <meta name="description" content="PathSense 是面向盲人和低视力人士的 iPhone 室内语音导航项目。了解多阶段引导的设计、视觉与近距离空间观测、当前能力及验证范围。">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --paper: #fafaf6;
+      --panel: #f0f2eb;
+      --ink: #18261d;
+      --muted: #46574e;
+      --accent: #175d40;
+      --rule: #b9c7ba;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #121a16;
+        --panel: #19251e;
+        --ink: #eef4e9;
+        --muted: #b7c6b9;
+        --accent: #9cdeaf;
+        --rule: #41574a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body, h1, h2, p, figure { margin: 0; }
+    body { font-size: 1.0625rem; line-height: 1.85; }
+    .wrap { margin-inline: auto; width: min(100% - 3rem, 64rem); }
+    a { color: var(--accent); text-underline-offset: .22em; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+    .skip { position: absolute; z-index: 1; left: 1rem; top: -10rem; padding: .45rem .9rem; background: var(--paper); }
+    .skip:focus { top: .5rem; }
+    .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .25rem 1rem; padding-block: .75rem; }
+    header { border-bottom: 1px solid var(--rule); }
+    .brand { font-size: 1.35rem; line-height: 1.25; letter-spacing: -.035em; font-weight: 720; }
+    nav, .links { display: flex; flex-wrap: wrap; gap: .35rem 1.25rem; align-items: center; }
+    nav a, .links a { padding-block: .35rem; }
+    nav a { color: var(--muted); font-size: .95rem; }
+    .hero { padding-block: clamp(2.5rem, 6vw, 4.8rem); }
+    h1 { font-size: clamp(1.65rem, 4vw, 3.15rem); line-height: 1.27; font-weight: 690; letter-spacing: -.035em; }
+    .hero .name { display: block; font-size: clamp(3.8rem, 10vw, 6rem); line-height: 1; margin-bottom: .7rem; color: var(--accent); letter-spacing: -.065em; }
+    .screen-reader { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    .hero p { max-width: 47rem; margin-top: 1.55rem; font-size: clamp(1.08rem, 2vw, 1.22rem); }
+    .row { display: grid; grid-template-columns: minmax(10.5rem, .83fr) minmax(0, 2.05fr); gap: clamp(1.25rem, 4vw, 3.8rem); border-top: 1px solid var(--rule); padding-block: clamp(1.8rem, 4vw, 3rem); }
+    h2 { font-size: clamp(1.35rem, 2.6vw, 1.78rem); line-height: 1.45; font-weight: 680; letter-spacing: -.025em; }
+    .verification { background: var(--panel); border-block: 1px solid var(--rule); }
+    .verification .row, .demo { border-top: 0; }
+    .demo p { color: var(--muted); margin-top: .8rem; }
+    .demo figure { text-align: center; min-width: 0; }
+    video { display: block; margin: auto; width: auto; height: auto; max-width: 100%; max-height: 30rem; background: #151a17; border-radius: .9rem; }
+    figcaption { margin-top: .65rem; font-size: .92rem; color: var(--muted); }
+    .links { margin-top: 1rem; font-size: .95rem; }
+    footer { border-top: 1px solid var(--rule); }
+    footer .bar { padding-block: 1rem; font-size: .95rem; }
+    @media (max-width: 43rem) {
+      .wrap { width: min(100% - 2rem, 40rem); }
+      .row { grid-template-columns: minmax(0, 1fr); gap: .85rem; }
+      .hero { padding-block: 2.6rem; }
+      .demo figure { margin-top: .75rem; }
+      video { max-height: 26rem; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+  <header>
+    <div class="wrap bar">
+      <span class="brand" lang="en">PathSense</span>
+      <nav aria-label="主导航">
+        <a href="#guidance">引导原理</a>
+        <a href="#scope">验证范围</a>
+        <a href="#route">开发回放</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <article aria-labelledby="title">
+      <div class="wrap hero">
+        <h1 id="title"><span class="name" lang="en">PathSense</span><span class="screen-reader">｜</span>面向盲人和低视力人士的室内语音导航系统</h1>
+        <p>PathSense 是一款面向盲人和低视力人士的 iPhone 室内语音导航应用，旨在从用户说出或输入目的地开始，经过多个连续的导航阶段，引导用户抵达并核实自己要去的地方。在建筑内部，判断下一步往哪里走所需的信息往往分散在沿途的导览目录、方向标识和入口标牌上。PathSense 通过手机相机识别与目的地有关的线索，结合用户朝向和近处通道的情况，用简短的中文或英文语音提示用户何时转向、向前走或停下。用户移动后，系统依据新的现场观测更新下一项指引，同时保留最终目的地和已经核实的路线信息。这套多阶段导航设计面向跨楼层及其他复杂室内场景，完整行程的最后一个环节是核对目标入口，并由用户确认到达。</p>
+      </div>
+      <section class="wrap row" id="guidance" aria-labelledby="guidance-title">
+        <h2 id="guidance-title">多阶段路线引导</h2>
+        <p>为了让前后两次指引连得起来，PathSense 在多阶段导航中分别记录<strong>最终目的地、当前子任务和已经核实的线索</strong>。最终目的地决定整段行程要去哪里，当前子任务决定此刻需要寻找什么，以及满足什么条件才能继续。不同线索能回答的问题也不同：导览目录可以提供目标所在的楼层，方向牌上的名称和箭头可以提供下一段的行进方向，入口标识可以帮助核对眼前的地点。即使沿途已经读到目的地名称，系统仍需在目标入口核对地点身份，并结合接近情况或用户确认，才能将行程标记为完成。</p>
+      </section>
+      <section class="wrap row" aria-labelledby="speech-title">
+        <h2 id="speech-title">视觉识别与语音反馈</h2>
+        <p>在实际交互中，云端视觉模型结合当前相机画面、用户目的地和最近的提示，判断眼前哪些信息与下一步有关。模型返回一条简短的场景描述、一项建议动作，以及该动作所依据的门、通道或路口在画面中的位置。提示词明确面向盲人和低视力用户，要求每次只描述与导航有关的可见事实，只给一个动作。读到标识时，需要核对设施名称与箭头的对应关系；需要补充观察时，要说明应把镜头转向哪里。场景描述和动作文字由模型按所选语言当次生成，再由 iPhone 合成为中文或英文语音。用户可以暂停或重听。</p>
+      </section>
+      <section class="wrap row" aria-labelledby="spatial-title">
+        <h2 id="spatial-title">前进判断与空间记录</h2>
+        <p><strong>何时主动提示向前走，由现场视觉和手机的近距离空间观测共同决定。</strong> 模型负责辨认该朝哪个目标前进，iPhone 则利用 ARKit 跟踪手机的位置和朝向，检查脚前地面、落脚区域以及身体前方是否有足够空间。只有目标仍与当前视野一致、近处通行条件也满足时，应用才播报前进指引。用户转向或移动后，系统依据新的观测决定下一步。若相机跟踪中断、目标已偏离视野或前方出现障碍，先前的前进判断随即失效。支持 LiDAR 的设备还可以记录局部深度点云，并与移动轨迹、已观测地标一起在 Mac 上查看，以便复核手机当时看到了什么、在何处作出了判断。</p>
+      </section>
+      <section class="verification" id="scope" aria-labelledby="scope-title">
+        <div class="wrap row">
+          <h2 id="scope-title">当前能力与验证范围</h2>
+          <p><strong>当前版本的能力与验证范围。</strong> 默认模式已支持实时环境描述、标识与方向识读，以及引导用户接近当前可辨认的门口。开发模式已通过受控画面回放检验跨楼层任务的阶段切换，包括保留最终目的地、核对楼层和辨认目标入口。真机测试已验证短时轨迹与 LiDAR 点云的采集、导出和显示。整栋建筑内任意起终点的路线规划、行进中的持续定位与偏航纠正，以及最终到达核验，仍未形成完整可用的导航流程。面向盲人及低视力用户的实地全程验证也尚未完成。</p>
+        </div>
+      </section>
+    </article>
+    <section class="wrap row demo" id="route" aria-labelledby="demo-title">
+      <div>
+        <h2 id="demo-title">开发模式受控回放</h2>
+        <p>这段录屏使用连续测试画面，展示开发模式如何核对路线线索、切换阶段，最后记录用户的到达确认。</p>
+        <div class="links">
+          <a href="media/pathsense-demo.mp4">打开 MP4 录屏</a>
+          <a href="media/captions-zh.vtt">中文字幕</a>
+          <a href="media/captions-en.vtt" lang="en">English captions</a>
+        </div>
+      </div>
+      <figure>
+        <video controls playsinline preload="metadata" poster="media/01-home.jpg" aria-label="PathSense 开发模式多阶段导航回放" aria-describedby="demo-caption">
+            <source src="media/pathsense-demo.mp4" type="video/mp4">
+            <track kind="captions" srclang="zh-Hans" label="简体中文" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjA2LjAyMArovpPlhaUgNDAy77yM5byA5aeL5oyB57ut5omr5o+P44CCCgowMDowMDowNi4wMjAgLS0+IDAwOjAwOjA3Ljc3MArlj5HnjrDnlpHkvLzpl6jvvIzor7fmoLjlr7npl6jlj6PkuI7pgJrpgZPjgIIKCjAwOjAwOjA3Ljc3MCAtLT4gMDA6MDA6MTIuNDgwCumAmui/h+mXqOWQjueOr+mhvu+8jOWvu+aJvuWImue7j+i/h+eahOmXqOeJjOOAggoKMDA6MDA6MTIuNDgwIC0tPiAwMDowMDoyMS44MzAK6Zeo54mM5pivIDIwOOOAguWvu+aJvualvOWxguebruW9leOAggoKMDA6MDA6MjEuODMwIC0tPiAwMDowMDozMC44MzAK55uu5b2V5bCG55uu5qCH5YiX5Zyo5Zub5qW844CC5a+75om+55S15qKv5oyH56S644CCCgowMDowMDozMC44MzAgLS0+IDAwOjAwOjM4LjUyMArnlLXmoq/moIfor4bmnJ3lj7PjgILmoLjlr7nlkI7liY3lvoDlm5vmpbzjgIIKCjAwOjAwOjM4LjUyMCAtLT4gMDA6MDA6NDYuODcwCualvOWxgueJjOaYvuekuiA0Ru+8jOe7p+e7reayv+acrOWxguaMh+ekuuWvu+aJviA0MDLjgIIKCjAwOjAwOjQ2Ljg3MCAtLT4gMDA6MDA6NTUuNDMwCuacrOWxgueahOaMh+ekuueJjOacneW3pu+8jOe7p+e7reWvu+aJviA0MDLjgIIKCjAwOjAwOjU1LjQzMCAtLT4gMDA6MDA6NTcuMjgwCumVnOWktOWvueWHhiA0MDLvvIzmoLjlr7nni6znq4vpl6jniYzjgIIKCjAwOjAwOjU3LjI4MCAtLT4gMDA6MDA6NTkuMjU1CuS9v+eUqOiAheehruiupOWIsOi+vu+8jOaRhOWDj+WktOWBnOatouOAggo=" default>
+            <track kind="captions" srclang="en" label="English" src="data:text/vtt;base64,V0VCVlRUCgowMDowMDowMC4wMDAgLS0+IDAwOjAwOjA2LjAyMApFbnRlciByb29tIDQwMiBhbmQgc3RhcnQgY29udGludW91cyBzY2FubmluZy4KCjAwOjAwOjA2LjAyMCAtLT4gMDA6MDA6MDcuNzcwCkNoZWNrIHRoZSBwb3NzaWJsZSBkb29yd2F5IGFuZCB0aGUgcGFzc2FnZS4KCjAwOjAwOjA3Ljc3MCAtLT4gMDA6MDA6MTIuNDgwCkFmdGVyIHBhc3NpbmcgdGhyb3VnaCB0aGUgZG9vciwgbG9vayBmb3IgdGhlIHJvb20gcGxhdGUuCgowMDowMDoxMi40ODAgLS0+IDAwOjAwOjIxLjgzMApUaGUgc3RhcnRpbmcgcm9vbSBwbGF0ZSByZWFkcyAyMDguIExvb2sgZm9yIGEgZGlyZWN0b3J5LgoKMDA6MDA6MjEuODMwIC0tPiAwMDowMDozMC44MzAKVGhlIGRpcmVjdG9yeSBsaXN0cyB0aGUgZGVzdGluYXRpb24gb24gNEYuIExvb2sgZm9yIGEgbGlmdCBzaWduLgoKMDA6MDA6MzAuODMwIC0tPiAwMDowMDozOC41MjAKVGhlIGxpZnQgc2lnbiBwb2ludHMgcmlnaHQuIENoZWNrIHRoZSBsaWZ0IGFuZCB0cmF2ZWwgdG8gNEYuCgowMDowMDozOC41MjAgLS0+IDAwOjAwOjQ2Ljg3MApUaGUgbGFuZGluZyBzaWduIHJlYWRzIDRGLiBGb2xsb3cgdGhlIGNvcnJpZG9yIHNpZ25zIHRvIDQwMi4KCjAwOjAwOjQ2Ljg3MCAtLT4gMDA6MDA6NTUuNDMwClRoZSBjb3JyaWRvciBzaWduIHBvaW50cyBsZWZ0IHRvd2FyZCByb29tIDQwMi4KCjAwOjAwOjU1LjQzMCAtLT4gMDA6MDA6NTcuMjgwClNjYW4gYW5kIHZlcmlmeSB0aGUgc3RhbmRhbG9uZSA0MDIgcGxhdGUuCgowMDowMDo1Ny4yODAgLS0+IDAwOjAwOjU5LjI1NQpUaGUgdHJhdmVsZXIgY29uZmlybXMgYXJyaXZhbCBhbmQgdGhlIGNhbWVyYSBzdG9wcy4K">
+            <a href="media/pathsense-demo.mp4">打开 MP4 录屏</a>
+          </video>
+        <figcaption id="demo-caption">iPhone Air 模拟器录屏 · 历史构建 1.0（8）</figcaption>
+      </figure>
+    </section>
+  </main>
+  <footer>
+    <div class="wrap bar">
+      <span lang="en">PathSense</span>
+      <a href="https://github.com/RTHyuan/-">在 GitHub 查看源码与开发文档</a>
+    </div>
+  </footer>
+</body>
+</html>

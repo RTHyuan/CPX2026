@@ -1,11 +1,11 @@
-"""Package a clean public-source snapshot, including the self-contained exhibit."""
+"""Package the PathSense source, documentation, and offline product page."""
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 import argparse
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-# Public code and generated exhibits only. Do not collect the working directory or private submissions.
+# The source archive contains the files listed here, including the offline media.
 PUBLIC_FILES = (
     '.gitignore', 'LICENSE', 'Package.swift', 'README.md',
     'PathSense.xcodeproj/project.pbxproj',
@@ -26,7 +26,7 @@ PUBLIC_FILES = (
     'Scripts/prepare-field-replay.py', 'Scripts/replay-field.sh',
     'Scripts/replay-step-simctl.py', 'Scripts/navigation-field-replay.json',
     'Scripts/map-viewer.py', 'Scripts/watch-map-usb.py',
-    'docs/index.html', 'docs/wayfinding.md', 'docs/air-field.md', 'docs/field-feedback.md',
+    'docs/index.html', 'docs/handoff.md', 'docs/directory-inventory-20261122.md', 'Scripts/simulator-demo-relay.py', 'docs/wayfinding.md', 'docs/air-field.md', 'docs/field-feedback.md',
     'docs/door-demo.md', 'docs/navigation-step-pro.md', 'docs/delivery-19.md',
     'docs/media/01-home.jpg', 'docs/media/home-dark.jpg', 'docs/media/navigation-dark.jpg',
     'docs/media/route-01-door.jpg', 'docs/media/route-origin.jpg', 'docs/media/route-02-directory.jpg',

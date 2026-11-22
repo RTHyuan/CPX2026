@@ -1,15 +1,15 @@
-# 室内寻路项目交接
+# PathSense 开发交接
 
-记录日期：2026-11-22。本文面向接手开发、复现与验证的人员。当前产品范围是**中英文识图到门口演示**，不能将局部点云显示或自动化测试结果解释为全楼导航已经验收。
+记录日期：2026-11-22。本文面向接手开发、复现与验证的人员。项目目标是以中英文语音分阶段引导盲人和低视力人士抵达指定的室内目的地。默认模式已实现现场描述、标识识读和接近可辨认门口的局部引导。多阶段任务另有开发入口和受控画面回放，具体能力及现场验证边界见下文。
 
 ## 当前代码基线
 
-- 项目：PathSense，界面名称“室内寻路 / Indoor Navigation”。
-- 本文核对时的 Git HEAD：`7c6a582`，提交标题 `Checkpoint bilingual visual navigation, local mapping and simulator video demo`。
+- 产品名称在中英文界面中均为 PathSense。
+- 原交接所核对的功能基线：`7c6a582`，提交标题 `Checkpoint bilingual visual navigation, local mapping and simulator video demo`。
 - Xcode 工程版本：`MARKETING_VERSION = 1.0`，`CURRENT_PROJECT_VERSION = 19`；App 最低 iOS 27.0，Swift 设置为 5.0。
 - Swift Package：`PathSenseCore`，用于独立运行核心逻辑测试；Package 平台声明与 App 最低系统版本不是同一个配置。
 - 当前 HEAD 包含模拟器视频回放与本机中转的后续改动；此前版本 19 的真机安装、地图与测试记录不自动证明这些后续改动均已验证。
-- 项目所有者已于 2026-11-22 确认：上传 `.gitignore` 忽略项之外的全部项目内容，包含原始现场素材、扫描楼层图、实测数据和演示媒体；保留现有提交历史。指定目标为 `https://github.com/RTHyuan/CPX26.git`，发布分支为 `main`。发布结果以远程 `main` 的实际提交为准。
+- 项目所有者已于 2026-11-22 确认：上传 `.gitignore` 忽略项之外的全部项目内容，包含原始现场素材、扫描楼层图、实测数据和演示媒体；保留现有提交历史。指定目标为 `https://github.com/RTHyuan/-.git`，发布分支为 `main`。发布结果以远程 `main` 的实际提交为准。
 
 ## 目录如何阅读
 
@@ -25,8 +25,9 @@ CPX26/
 ├── Proxy/                     可选 Mac 云端中转及其测试
 ├── MappingData/               Mac 查看页、扫描楼层图、短时真实采集与说明
 ├── docs/                      使用、交付、现场验证说明与展示媒体
+│   └── archive/2026-11/       早期展示与提交资料归档
 ├── Training/                  历史训练资料；当前主流程不依赖自训练分类器推理
-├── Submission/                产品介绍、提交资料及可能的私有资料
+├── Submission/private/        本地排除的原始工作资料
 ├── 照片/                      原始现场照片、扫描图、视频
 ├── output/                    ZIP、录屏、海报等生成交付物
 ├── .build-local/              多次 Xcode 构建、模拟器、回放、测试和本机证据
@@ -37,11 +38,11 @@ CPX26/
 
 这是职责目录树，不是本次磁盘容量统计；精确体积及隐藏项见[目录审计与上传范围](directory-inventory-20261122.md)。以 `.` 开头的目录通常在 Finder 默认视图中隐藏，也会占用磁盘。大体积构建产物、原始视频和多份输出不属于运行源码本身。当前 `.gitignore` 已忽略 `.build/`、`.build-local/`、`DerivedData/`、`xcuserdata/`、`.env*`、证书与描述文件、`Proxy/local_settings.py` 等；“被忽略”不等于不存在，也不等于文件可公开。
 
-初次清点时 `MappingData/` 在工作区存在但尚未进入 Git 跟踪。README 和 Mac 查看器依赖它；本次已选上传范围包含该目录的页面、扫描图、短采集与说明，发布时须一并纳入，不能只上传脚本。
+`MappingData/` 已包含在 Git 仓库中。Mac 查看器使用其中的页面、楼层扫描图和一段真机短采集，可按该目录的使用说明载入数据。
 
 ## 默认流程与代码入口
 
-默认入口是 `App/PathSenseApp.swift` → `DoorDemoView` → `DoorDemoSession`。启动参数 `--full-navigation` 进入保留的完整导航开发界面；该界面的功能和验证范围应与默认简要演示分别理解。
+默认入口是 `App/PathSenseApp.swift` → `DoorDemoView` → `DoorDemoSession`。启动参数 `--full-navigation` 进入多阶段标识路线开发界面，复现用的画面与预期状态转换见[开发模式说明](wayfinding.md)。
 
 | 文件 | 接手时应关注的职责 |
 | --- | --- |
@@ -172,8 +173,8 @@ xcodebuild -project PathSense.xcodeproj -scheme PathSense \
 
 ## 已确认的 GitHub 发布范围
 
-项目所有者于 2026-11-22 在阅读目录审计后，选择上传 `.gitignore` 忽略项之外的全部内容，即此前 A／B／C 范围以及原始现场照片、视频与其他非忽略文件。目标远程为 `https://github.com/RTHyuan/CPX26.git`，使用 `main`，按用户给出的 Git 推送流程保留现有提交历史。发布范围按此记录执行；具体版本以远程 `main` 提交为准。
+项目所有者于 2026-11-22 在阅读目录审计后，选择上传 `.gitignore` 忽略项之外的全部内容，即此前 A／B／C 范围以及原始现场照片、视频与其他非忽略文件。目标远程为 `https://github.com/RTHyuan/-.git`，使用 `main`，按用户给出的 Git 推送流程保留现有提交历史。发布范围按此记录执行；具体版本以远程 `main` 提交为准。
 
 已被 `.gitignore` 忽略的构建缓存、DerivedData、`.env*`、`Proxy/local_settings.py`、证书／描述文件、部分 ZIP 和私有提交资料等不纳入。`output/`、`照片/` 等目录并没有整体被忽略，其中未被忽略的文件也属于用户本次选择。Git 忽略规则不会自动抹掉已经提交的历史内容；保留现有历史意味着相关历史对象也会随 Git 推送保留。`.git/` 是本地仓库数据库，不作为普通源码目录另行添加。
 
-`Scripts/package-source.py` 是已有 ZIP 白名单工具，并非整个当前工作区的镜像。初次核对的白名单未自动收录本文和 `Scripts/simulator-demo-relay.py`；这些非忽略文件已属于本次 GitHub 发布范围，不能直接用旧 ZIP 推断发布已经完整。
+`Scripts/package-source.py` 是已有 ZIP 白名单工具，并非整个当前工作区的镜像。当前打包清单包含交接文档、目录说明和模拟器中转脚本。旧版 ZIP 保留生成时的文件。

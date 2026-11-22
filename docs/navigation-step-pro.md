@@ -31,7 +31,7 @@ Scripts/replay-field.sh SIMULATOR_UDID
 
 ## iPhone 17 Pro 云端连接
 
-Release 1.0（14）修复了构建 13 缺少设备授权的问题。真机使用硬件生成的密钥注册，重启 App 后保留授权。2026 年 11 月 22 日，iPhone 17 Pro 在 Mac 演示代理暂停时，两次用内置实拍门照直接向 DeepSeek 取得 HTTP 200 和匹配请求帧的规划。记录显示均为非蜂窝网络请求，未经过系统代理。耗时为 2.150 秒和 2.676 秒。蜂窝与拔线场景尚未单独测试。[两次真机回执摘要](../.build-local/navigation-step-pro/cloud14/public-result.json)
+Release 1.0（14）修复了构建 13 缺少设备授权的问题。真机使用硬件生成的密钥注册，重启 App 后保留授权。2026 年 11 月 22 日，iPhone 17 Pro 在 Mac 演示代理暂停时，两次用内置实拍门照直接向 DeepSeek 取得 HTTP 200 和匹配请求帧的规划。记录显示均为非蜂窝网络请求，未经过系统代理。耗时为 2.150 秒和 2.676 秒。蜂窝与拔线场景尚未单独测试。两次真机回执摘要（本地复核 `../.build-local/navigation-step-pro/cloud14/public-result.json`）
 
 已配置直连时，使用说明显示连接方式及测试按钮。点击「用公开门照测试连接」只发送内置的 CC0 实拍门照和测试位姿。手机须收到对应帧号并成功解析规划，才能显示测试成功。发送现场关键帧另由「启用云端视觉」的确认控制。
 
@@ -39,11 +39,11 @@ Release 1.0（14）修复了构建 13 缺少设备授权的问题。真机使用
 
 | 验证环境 | 实际结果与证据 |
 |---|---|
-| 构建 | 1.0 (13) 的模拟器 Debug 和签名真机 Release 均通过。真机安装查询返回 1.0 (13)。产物包含新图标、公开门照和直连模型的客户端。见[真机版本查询](../.build-local/navigation-step-pro/installed-13-version.json)、[Debug 构建日志](../.build-local/navigation-step-pro/debug-direct-13.log)和[Release 构建日志](../.build-local/navigation-step-pro/release-independent-cloud.log)。 |
-| Mac 自动化回放 | 核心测试 147/147 通过。加入直连协议回归后，代理及协议测试 16/16 通过。现场照片的系统 OCR 识别出 `BSG33` 和 `ROOM - BSG33`。读取这张牌后，最终目的地仍为洗手间，规划器仍将所在场景标为未知。见[核心测试](../.build-local/navigation-step-pro/core-tests.log)、[代理及协议测试](../.build-local/navigation-step-pro/proxy-tests-direct.log)和[照片 OCR](../.build-local/navigation-step-pro/mac-original-photo-vision.json)。 |
-| iPhone 18 Pro 模拟器 | 同一段回放中，执行层接受了两份不同的许可，`AVAudioPlayer` 两次开始播放「向前迈一步」。第一声使用源录像第 2757、2763、2769 帧。模拟用户站稳后重新观察，第二声使用第 3144、3147、3150 帧。两次最新检查距开播分别约 102 和 105 毫秒。冻结画面后，第二份许可被撤销。JPEG、帧号和时间戳来自原录像，位姿、门框和通行证据由测试注入。本次回放不运行 Vision。见[逐帧校验](../.build-local/navigation-step-pro/direct-03/validated.json)和[许可与播报记录](../.build-local/navigation-step-pro/direct-03/walk-measures.json)。 |
-| 模拟器界面测试 | 较早版本在 Pro 上运行了 20 项，12 项通过、7 项失败、1 项跳过。后续一次 XCTest 运行器在进入用例前退出，另两次运行被中断。两步直接回放已单独通过，整套界面测试仍待重新通过。见[各次运行及用例结果](../.build-local/navigation-step-pro/simulator-evidence-index.json)。 |
-| iPhone 17 Pro 静置 | 一次真机诊断采到 674 个位姿、98 次近场检查和 19 个关键观察，并记录普通话完成、对准轻震与急停双震回调。另一次采样的 586 次近场检查中有 583 次收到深度及置信图，前方区域全部判为未知，未发前进指令。现场听感、实际脚步和完整的教室至厕所路线尚未进行陪同实走验证。见[真机诊断](../.build-local/navigation-step-pro/device-check.json)和[真机深度采样](../.build-local/navigation-step-pro/pro-live-depth.json)。 |
+| 构建 | 1.0 (13) 的模拟器 Debug 和签名真机 Release 均通过。真机安装查询返回 1.0 (13)。产物包含新图标、公开门照和直连模型的客户端。见真机版本查询（本地复核 `../.build-local/navigation-step-pro/installed-13-version.json`）、Debug 构建日志（本地复核 `../.build-local/navigation-step-pro/debug-direct-13.log`）和Release 构建日志（本地复核 `../.build-local/navigation-step-pro/release-independent-cloud.log`）。 |
+| Mac 自动化回放 | 核心测试 147/147 通过。加入直连协议回归后，代理及协议测试 16/16 通过。现场照片的系统 OCR 识别出 `BSG33` 和 `ROOM - BSG33`。读取这张牌后，最终目的地仍为洗手间，规划器仍将所在场景标为未知。见核心测试（本地复核 `../.build-local/navigation-step-pro/core-tests.log`）、代理及协议测试（本地复核 `../.build-local/navigation-step-pro/proxy-tests-direct.log`）和照片 OCR（本地复核 `../.build-local/navigation-step-pro/mac-original-photo-vision.json`）。 |
+| iPhone 18 Pro 模拟器 | 同一段回放中，执行层接受了两份不同的许可，`AVAudioPlayer` 两次开始播放「向前迈一步」。第一声使用源录像第 2757、2763、2769 帧。模拟用户站稳后重新观察，第二声使用第 3144、3147、3150 帧。两次最新检查距开播分别约 102 和 105 毫秒。冻结画面后，第二份许可被撤销。JPEG、帧号和时间戳来自原录像，位姿、门框和通行证据由测试注入。本次回放不运行 Vision。见逐帧校验（本地复核 `../.build-local/navigation-step-pro/direct-03/validated.json`）和许可与播报记录（本地复核 `../.build-local/navigation-step-pro/direct-03/walk-measures.json`）。 |
+| 模拟器界面测试 | 较早版本在 Pro 上运行了 20 项，12 项通过、7 项失败、1 项跳过。后续一次 XCTest 运行器在进入用例前退出，另两次运行被中断。两步直接回放已单独通过，整套界面测试仍待重新通过。见各次运行及用例结果（本地复核 `../.build-local/navigation-step-pro/simulator-evidence-index.json`）。 |
+| iPhone 17 Pro 静置 | 一次真机诊断采到 674 个位姿、98 次近场检查和 19 个关键观察，并记录普通话完成、对准轻震与急停双震回调。另一次采样的 586 次近场检查中有 583 次收到深度及置信图，前方区域全部判为未知，未发前进指令。现场听感、实际脚步和完整的教室至厕所路线尚未进行陪同实走验证。见真机诊断（本地复核 `../.build-local/navigation-step-pro/device-check.json`）和真机深度采样（本地复核 `../.build-local/navigation-step-pro/pro-live-depth.json`）。 |
 
 ## 陪同实走
 

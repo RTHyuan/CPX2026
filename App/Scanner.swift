@@ -94,7 +94,7 @@ import SwiftUI
         dictationPhase = .idle
     }
     func configureCloud(enable: Bool) {
-        if enable && planningEndpoint == nil { networkNote="请输入演示 Mac 显示的完整配对地址。"; return }
+        if enable && planningEndpoint == nil { networkNote="请输入配对 Mac 显示的完整地址。"; return }
         if journey != nil && !isPaused && journey?.stage != .arrived { stopCapture(); isPaused=true; message="配置已更新，点继续重新观察。"; spokenMessage=message }
         cloudEnabled=enable
         if directCloudAvailable { UserDefaults.standard.set(enable, forKey: directCloudConsentKey) }
@@ -176,7 +176,7 @@ import SwiftUI
         } else if storesPairing, let pairing = CloudPairing.load() {
             proxyAddress = pairing.address
             cloudEnabled = pairing.consent
-            networkNote = pairing.consent ? "云端视觉已启用，等待首次关键帧。" : "已配对演示 Mac。启用云端视觉后，可发送导航关键帧。"
+            networkNote = pairing.consent ? "云端视觉已启用，等待首次关键帧。" : "已连接配对 Mac。启用云端视觉后，可发送导航关键帧。"
         }
     }
 
@@ -224,7 +224,7 @@ import SwiftUI
         guard let endpoint = planningEndpoint, !requireDirect || directCloudAvailable else {
             receipt.status = "failed"
             receipt.outcome = requireDirect ? "missing_device_enrollment" : "missing_pairing"
-            cloudTestNote = requireDirect ? "这台 iPhone 尚未完成云端直连授权。请在解锁后完成设备配置，再测试连接。" : "请先完成手机直连授权，或填入演示 Mac 的配对地址。"
+            cloudTestNote = requireDirect ? "这台 iPhone 尚未完成云端直连授权。请在解锁后完成设备配置，再测试连接。" : "请先完成手机直连授权，或填入配对 Mac 的地址。"
             return
         }
         cloudTestNote = "正在用公开门照测试云端连接…"
@@ -236,12 +236,12 @@ import SwiftUI
             cloudTestNote = "连接成功，手机已收到并核对公开门照的规划回复。"
         } catch let e as URLError {
             receipt.status = "failed"; receipt.outcome = "url_" + String(e.errorCode)
-            cloudTestNote = directCloudAvailable ? "未能连接识图服务。请检查手机的无线局域网或蜂窝数据，然后重新测试。" : "未连通。请确认手机可访问演示 Mac，并在系统设置中允许 PathSense 使用本地网络。"
+            cloudTestNote = directCloudAvailable ? "未能连接识图服务。请检查手机的无线局域网或蜂窝数据，然后重新测试。" : "未连通。请确认手机可访问配对 Mac，并在系统设置中允许 PathSense 使用本地网络。"
         } catch let e as CloudHTTPError {
             receipt.status = "failed"; receipt.outcome = "http_" + String(e.status) + (e.reason.map { "_" + $0 } ?? "")
             if directCloudAvailable {
                 cloudTestNote = [401, 403].contains(e.status) ? "识图服务未接受此设备的授权。" : "识图服务暂未返回有效结果，请稍后重试。"
-            } else { cloudTestNote = e.status == 404 ? "配对地址已失效，请更新演示 Mac 的地址。" : "手机已连到代理，模型暂未返回有效结果。请稍后重试。" }
+            } else { cloudTestNote = e.status == 404 ? "配对地址已失效，请更新配对 Mac 的地址。" : "手机已连到代理，模型暂未返回有效结果。请稍后重试。" }
         } catch {
             receipt.status = "failed"; receipt.outcome = "invalid_photo_or_reply"
             cloudTestNote = "回复未能通过图像和帧号校验，请重新测试。"

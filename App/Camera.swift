@@ -379,12 +379,12 @@ final class SignCamera: NSObject, ARSessionDelegate {
                 }
             }
             if video.finished {
-                s.event(.state(.failed("演示视频已播放完。暂停后继续可从头播放。")))
+                s.event(.state(.failed("回放视频已播放完。暂停后继续可从头播放。")))
                 return
             }
         } catch {
             video.stop()
-            s.event(.state(.failed("演示视频读取失败：" + error.localizedDescription)))
+            s.event(.state(.failed("回放视频读取失败：" + error.localizedDescription)))
             return
         }
         frames.asyncAfter(deadline: .now() + 1.0 / 30.0) { [weak self] in self?.videoNext(id: id, video: video) }
@@ -803,7 +803,7 @@ private final class SimulatorVideoFeed {
             state = .ready
             NSLog("PathSense simulator video: RGB pixels only; synthetic stationary pose; no measured pose, depth, or walking clearance. Loop=%@", looping ? "yes" : "no")
         } catch {
-            state = .failed("无法打开演示视频：" + error.localizedDescription)
+            state = .failed("无法打开回放视频：" + error.localizedDescription)
         }
     }
 
