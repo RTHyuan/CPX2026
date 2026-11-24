@@ -50,7 +50,7 @@ python3 Scripts/enroll-device-cloud.py --device YOUR_DEVICE_ID
 
 ## 查看局部地图
 
-PathSense 可以把一次观察中的移动轨迹和地标导出为 JSON。支持 LiDAR 的 iPhone Pro 还可以记录局部深度点云。在导航页展开「局部地图」并分享文件。Mac 上运行以下命令，打开终端显示的本机地址，导入刚才的 JSON 即可查看。三张扫描楼层图可作为参考，尚未与手机位置自动对齐。[Mac 查看器与 USB 操作](MappingData/Mac查看器.md)
+PathSense 可以把一次观察中的移动轨迹和地标导出为 JSON。支持 LiDAR 的 iPhone Pro 还可以记录局部深度点云。在导航页展开「局部地图」并分享文件。Mac 上运行以下命令，打开终端显示的本机地址，导入刚才的 JSON 即可查看。原始现场照片、视频和楼层扫描图由团队在本地保管。[Mac 查看器与 USB 操作](MappingData/Mac查看器.md)
 
 ```sh
 python3 Scripts/map-viewer.py

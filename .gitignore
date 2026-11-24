@@ -17,3 +17,10 @@ __pycache__/
 
 # Private plaintext source configuration on the demo Mac
 /Proxy/local_settings.py
+
+# Original field media and local copies
+/照片/
+/MappingData/floorplans/*-扫描.jpg
+/output/IndoorNavigation-RecordingDemo/App/Resources/RecordingDemo/source.mp4
+/output/Indoor-Navigation-English-Demo-raw.mp4
+*.mp4.sb-*

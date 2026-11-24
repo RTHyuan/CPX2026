@@ -4,6 +4,8 @@
 
 ## 当前代码基线
 
+2026-11-24 更新：现场原片、楼层扫描图及已识别的副本由团队在本地保管。下文关于原始素材的发布记录反映当时的范围。
+
 - 产品名称在中英文界面中均为 PathSense。
 - 原交接所核对的功能基线：`7c6a582`，提交标题 `Checkpoint bilingual visual navigation, local mapping and simulator video demo`。
 - Xcode 工程版本：`MARKETING_VERSION = 1.0`，`CURRENT_PROJECT_VERSION = 19`；App 最低 iOS 27.0，Swift 设置为 5.0。
@@ -38,7 +40,7 @@ CPX26/
 
 这是职责目录树，不是本次磁盘容量统计；精确体积及隐藏项见[目录审计与上传范围](directory-inventory-20261122.md)。以 `.` 开头的目录通常在 Finder 默认视图中隐藏，也会占用磁盘。大体积构建产物、原始视频和多份输出不属于运行源码本身。当前 `.gitignore` 已忽略 `.build/`、`.build-local/`、`DerivedData/`、`xcuserdata/`、`.env*`、证书与描述文件、`Proxy/local_settings.py` 等；“被忽略”不等于不存在，也不等于文件可公开。
 
-`MappingData/` 已包含在 Git 仓库中。Mac 查看器使用其中的页面、楼层扫描图和一段真机短采集，可按该目录的使用说明载入数据。
+`MappingData/` 包含 Mac 查看器和短时采集说明。若有经授权的本地楼层扫描图，可按该目录的使用说明载入。
 
 ## 默认流程与代码入口
 
