@@ -12,6 +12,22 @@ PathSense 是一款面向盲人和低视力人士的 iPhone 室内语音导航�
 
 *PathSense is a voice-guided indoor navigation app for iPhone, designed for people who are blind or have low vision. Its goal is to guide the user through successive stages of a journey to a chosen destination, including routes across floors. The current app describes the scene, reads directional signs and guides the user toward a visible doorway in English or Chinese. Multi-floor stage transitions have been tested in controlled replay. End-to-end navigation between arbitrary indoor locations remains in development.*
 
+## 项目后记
+
+PathSense 是我们参加 [CrossPointX 2026 校际黑客松](https://cpx2026.devpost.com/)的小组作品。在约 24 小时的开发时间里，我们完成了从需求探索、方案设计到 iPhone 真机原型的实现。受时间与开发经验所限，当时的参赛版本 1.0（18）仍有不少不足，例如在某些场景下无法及时提供前进引导，连续导航的完整性与稳定性也有待完善。
+
+这次参赛也留下了一些遗憾。在约三分钟的现场讲解与演示中，我们没有使用幻灯片，而是希望直接展示已经安装在 iPhone 上、能够实际运行的 App——这是我们最希望被看见的成果。但从团队的现场感受来看，讲解与真机演示未能得到充分关注，作品的实际运行情况和我们投入其中的思考，也未能充分传达。这让我们感到失落。
+
+比赛之外，我们仍然希望这个想法能够继续生长。项目受到 Apple Swift Student Challenge 获奖作品 [Asuo — 在泛洪区发现安全的逃生实时路线](https://www.apple.com.cn/newsroom/2026/05/ai-meets-accessibility-in-this-years-swift-student-challenge/) 的启发。我们由此开始思考，能否让室内环境中依赖视觉获取的方向信息，转化为盲人和低视力人士能够使用的行动指引。
+
+在现实场景的模拟测试中，我们更具体地意识到：寻找入口、辨认标识、确认方向，这些对明眼人而言往往不经意的动作，在缺少视觉信息时可能成为一道道障碍。团队的模拟体验无法代替视障使用者的真实经历，但它让我们更加确信，这个需求值得被认真对待，也值得与真正的使用者一起继续探索。
+
+我们将项目开源，希望有兴趣、有能力的开发者、设计师、无障碍实践者与使用者参与进来，共同完善它，推动它走向真实可用的产品。如果这份尝试能够为视障人士的室内自主出行提供一点帮助，或为后续的解决方案带来一点启发，那就是这个项目带给我们最大的收获。
+
+如有交流或合作需要，欢迎通过本仓库的 Issues 联系我们。我们十分乐意分享已有的开发经验、测试观察和设计思路，并在力所能及的范围内提供帮助。
+
+**有爱，无碍。**
+
 ## 在手机上使用
 
 1. 在首页选择中文或 English，说出或输入想找的地方。也可以保留默认的「门口」，点「开始导航」。
